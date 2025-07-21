@@ -1,0 +1,145 @@
+package com.smartcampus.service.impl;
+
+import com.smartcampus.dto.StudentDTO;
+import com.smartcampus.entity.Student;
+import com.smartcampus.entity.StudentStatus;
+import com.smartcampus.entity.User;
+import com.smartcampus.exception.ResourceNotFoundException;
+import com.smartcampus.mapper.StudentMapper;
+import com.smartcampus.repository.StudentRepository;
+import com.smartcampus.repository.UserRepository;
+import com.smartcampus.service.StudentService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+@Transactional
+public class StudentServiceImpl implements StudentService {
+
+    private final StudentRepository studentRepository;
+    private final UserRepository userRepository;
+    private final StudentMapper studentMapper;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StudentDTO> getAllStudents() {
+        List<Student> students = studentRepository.findAll();
+        return studentMapper.toDtoList(students);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public StudentDTO getStudentById(Long id) {
+        Student student = studentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found with id: " + id));
+        return studentMapper.toDto(student);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public StudentDTO getStudentByUserId(Long userId) {
+        Student student = studentRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found with user id: " + userId));
+        return studentMapper.toDto(student);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public StudentDTO getStudentByEmail(String email) {
+        Student student = studentRepository.findByUserEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found with email: " + email));
+        return studentMapper.toDto(student);
+    }
+
+    @Override
+    public StudentDTO createStudent(StudentDTO studentDTO) {
+        // Check if student ID already exists
+        if (studentRepository.existsByStudentId(studentDTO.getStudentId())) {
+            throw new RuntimeException("Student with ID " + studentDTO.getStudentId() + " already exists");
+        }
+
+        // Check if user exists and is a student
+        User user = userRepository.findById(studentDTO.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + studentDTO.getUserId()));
+
+        if (user.getRole() != com.smartcampus.entity.Role.STUDENT) {
+            throw new RuntimeException("User must have STUDENT role");
+        }
+
+        // Check if user already has a student profile
+        if (studentRepository.existsByUserId(studentDTO.getUserId())) {
+            throw new RuntimeException("User already has a student profile");
+        }
+
+        Student student = studentMapper.toEntity(studentDTO);
+        student.setUser(user);
+        
+        Student savedStudent = studentRepository.save(student);
+        return studentMapper.toDto(savedStudent);
+    }
+
+    @Override
+    public StudentDTO updateStudent(Long id, StudentDTO studentDTO) {
+        Student existingStudent = studentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found with id: " + id));
+
+        // Check if student ID is being changed and if it already exists
+        if (!existingStudent.getStudentId().equals(studentDTO.getStudentId()) &&
+                studentRepository.existsByStudentId(studentDTO.getStudentId())) {
+            throw new RuntimeException("Student with ID " + studentDTO.getStudentId() + " already exists");
+        }
+
+        // Update fields
+        existingStudent.setStudentId(studentDTO.getStudentId());
+        existingStudent.setFirstName(studentDTO.getFirstName());
+        existingStudent.setLastName(studentDTO.getLastName());
+        existingStudent.setDateOfBirth(studentDTO.getDateOfBirth());
+        existingStudent.setPhoneNumber(studentDTO.getPhoneNumber());
+        existingStudent.setAddress(studentDTO.getAddress());
+        existingStudent.setMajor(studentDTO.getMajor());
+        existingStudent.setYearOfStudy(studentDTO.getYearOfStudy());
+        existingStudent.setGpa(studentDTO.getGpa());
+        existingStudent.setStatus(studentDTO.getStatus());
+
+        Student updatedStudent = studentRepository.save(existingStudent);
+        return studentMapper.toDto(updatedStudent);
+    }
+
+    @Override
+    public void deleteStudent(Long id) {
+        if (!studentRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Student not found with id: " + id);
+        }
+        studentRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StudentDTO> getStudentsByMajor(String major) {
+        List<Student> students = studentRepository.findByMajor(major);
+        return studentMapper.toDtoList(students);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StudentDTO> getStudentsByStatus(String status) {
+        try {
+            StudentStatus studentStatus = StudentStatus.valueOf(status.toUpperCase());
+            List<Student> students = studentRepository.findByStatus(studentStatus);
+            return studentMapper.toDtoList(students);
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid status: " + status);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StudentDTO> getStudentsByYear(Integer year) {
+        List<Student> students = studentRepository.findByYearOfStudy(year);
+        return studentMapper.toDtoList(students);
+    }
+} 

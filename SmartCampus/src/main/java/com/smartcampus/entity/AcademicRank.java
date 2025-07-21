@@ -1,0 +1,12 @@
+package com.smartcampus.entity;
+
+public enum AcademicRank {
+    ASSISTANT_PROFESSOR,
+    ASSOCIATE_PROFESSOR,
+    FULL_PROFESSOR,
+    DISTINGUISHED_PROFESSOR,
+    EMERITUS_PROFESSOR,
+    LECTURER,
+    SENIOR_LECTURER,
+    PRINCIPAL_LECTURER
+} 
