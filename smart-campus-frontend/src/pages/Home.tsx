@@ -145,13 +145,13 @@ export default function Home() {
               <Link to="/notifications" className="btn-accent px-3 sm:px-4 py-2 sm:py-3 text-center text-sm sm:text-base">
                 Notifications
               </Link>
-              <Link to="/announcements" className="btn-outline px-3 sm:px-4 py-2 sm:py-3 text-center text-sm sm:text-base">
+              <Link to="/announcements" className="btn-secondary px-3 sm:px-4 py-2 sm:py-3 text-center text-sm sm:text-base">
                 Announcements
               </Link>
               <Link to="/profile" className="btn-primary px-3 sm:px-4 py-2 sm:py-3 text-center text-sm sm:text-base">
                 Profile
               </Link>
-              <Link to="/grades" className="btn-secondary px-3 sm:px-4 py-2 sm:py-3 text-center text-sm sm:text-base">
+              <Link to="/grades" className="btn-accent px-3 sm:px-4 py-2 sm:py-3 text-center text-sm sm:text-base">
                 Grades
               </Link>
               {user?.role === 'ADMIN' && (

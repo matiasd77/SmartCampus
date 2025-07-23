@@ -37,7 +37,7 @@ public class UserController {
     private final PasswordEncoder passwordEncoder;
 
     @GetMapping("/me")
-    @PreAuthorize("hasAnyRole('STUDENT', 'PROFESSOR', 'ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(
         summary = "Get Current User Profile",
         description = "Retrieve the complete profile information of the currently authenticated user. " +

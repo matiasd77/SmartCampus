@@ -211,7 +211,7 @@ public class AuthController {
         } catch (Exception e) {
             log.error("Error in debug endpoint", e);
             return ResponseEntity.status(500)
-                    .body(ApiResponse.error("Debug failed", e.getMessage()));
+                    .body(ApiResponse.<Map<String, Object>>error("Debug failed"));
         }
     }
 } 

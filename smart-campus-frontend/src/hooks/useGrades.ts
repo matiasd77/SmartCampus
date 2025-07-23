@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { gradesAPI } from '../services/api';
 import type { Grade, GradeRequest, GradeFilters, GradesResponse } from '../types/dashboard';
 import { useToast } from '../contexts/ToastContext';
@@ -21,6 +21,7 @@ export const useGrades = () => {
   });
 
   const { showSuccess, showError } = useToast();
+  const isInitialized = useRef(false);
 
   const fetchGrades = async (page = 0, size = 10, newFilters?: GradeFilters) => {
     setIsLoading(true);
@@ -170,8 +171,11 @@ export const useGrades = () => {
   };
 
   useEffect(() => {
-    console.log('useGrades: Initial data fetch on mount');
-    fetchGrades();
+    if (!isInitialized.current) {
+      console.log('useGrades: Initial data fetch on mount');
+      isInitialized.current = true;
+      fetchGrades();
+    }
   }, []); // Empty dependency array ensures this runs only once on mount
 
   return {

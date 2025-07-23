@@ -5,7 +5,6 @@ import { useDashboardData } from '../hooks/useDashboardData';
 import { SummaryCard } from '../components/SummaryCard';
 import { NetworkStatus } from '../components/NetworkStatus';
 import { ActivityFeed } from '../components/ActivityFeed';
-import { ToastDemo } from '../components/ToastDemo';
 import { Navbar } from '../components/Navbar';
 import { getUserDisplayName } from '../utils/userUtils';
 import { hasAnyRole } from '../utils/authUtils';
@@ -95,35 +94,37 @@ export default function Dashboard() {
                     <div className="group relative overflow-hidden bg-gradient-to-br from-indigo-50 to-violet-50 rounded-2xl border border-indigo-200/50 p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
                       <div className="absolute inset-0 bg-gradient-to-br from-indigo-100/20 to-violet-100/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                       <div className="relative z-10 text-center">
-                        <div className="text-3xl font-bold text-indigo-700 mb-1">{new Date().getDate()}</div>
-                        <div className="text-sm font-semibold text-indigo-600">Today</div>
-                        <div className="text-xs text-indigo-500 mt-1">Date</div>
+                        <div className="text-4xl font-bold text-indigo-700 mb-2">{new Date().getDate()}</div>
+                        <div className="text-lg font-semibold text-indigo-600 mb-1">Today</div>
+                        <div className="text-sm text-indigo-500 font-medium">Date</div>
                       </div>
                     </div>
                     <div className="group relative overflow-hidden bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl border border-emerald-200/50 p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
                       <div className="absolute inset-0 bg-gradient-to-br from-emerald-100/20 to-green-100/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                       <div className="relative z-10 text-center">
-                        <div className="text-3xl font-bold text-emerald-700 mb-1">{new Date().getMonth() + 1}</div>
-                        <div className="text-sm font-semibold text-emerald-600">Month</div>
-                        <div className="text-xs text-emerald-500 mt-1">Current</div>
+                        <div className="text-2xl font-bold text-emerald-700 mb-2 leading-tight">
+                          {new Date().toLocaleDateString('en-US', { month: 'long' })}
+                        </div>
+                        <div className="text-lg font-semibold text-emerald-600 mb-1">Month</div>
+                        <div className="text-sm text-emerald-500 font-medium">Current</div>
                       </div>
                     </div>
                     <div className="group relative overflow-hidden bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl border border-violet-200/50 p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
                       <div className="absolute inset-0 bg-gradient-to-br from-violet-100/20 to-purple-100/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                       <div className="relative z-10 text-center">
-                        <div className="text-3xl font-bold text-violet-700 mb-1">{new Date().getFullYear()}</div>
-                        <div className="text-sm font-semibold text-violet-600">Year</div>
-                        <div className="text-xs text-violet-500 mt-1">Current</div>
+                        <div className="text-3xl font-bold text-violet-700 mb-2">{new Date().getFullYear()}</div>
+                        <div className="text-lg font-semibold text-violet-600 mb-1">Year</div>
+                        <div className="text-sm text-violet-500 font-medium">Current</div>
                       </div>
                     </div>
                     <div className="group relative overflow-hidden bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border border-amber-200/50 p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
                       <div className="absolute inset-0 bg-gradient-to-br from-amber-100/20 to-orange-100/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                       <div className="relative z-10 text-center">
-                        <div className="text-3xl font-bold text-amber-700 mb-1">
-                          {new Date().toLocaleDateString('en-US', { weekday: 'short' })}
+                        <div className="text-2xl font-bold text-amber-700 mb-2 leading-tight">
+                          {new Date().toLocaleDateString('en-US', { weekday: 'long' })}
                         </div>
-                        <div className="text-sm font-semibold text-amber-600">Day</div>
-                        <div className="text-xs text-amber-500 mt-1">Week</div>
+                        <div className="text-lg font-semibold text-amber-600 mb-1">Day</div>
+                        <div className="text-sm text-amber-500 font-medium">Week</div>
                       </div>
                     </div>
                   </div>
@@ -436,11 +437,6 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Enhanced Toast Demo */}
-        <div className="mb-8">
-          <ToastDemo />
         </div>
       </div>
     </div>

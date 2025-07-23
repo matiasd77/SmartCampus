@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { coursesAPI } from '../services/api';
 import type { Course, CourseRequest, CourseFilters } from '../types/dashboard';
 import { useToast } from '../contexts/ToastContext';
@@ -21,6 +21,7 @@ export const useCourses = () => {
   });
 
   const { showSuccess, showError } = useToast();
+  const isInitialized = useRef(false);
 
   const fetchCourses = async (page = 0, size = 10, newFilters?: CourseFilters) => {
     setIsLoading(true);
@@ -236,8 +237,11 @@ export const useCourses = () => {
   };
 
   useEffect(() => {
-    console.log('useCourses: Initial data fetch on mount');
-    fetchCourses();
+    if (!isInitialized.current) {
+      console.log('useCourses: Initial data fetch on mount');
+      isInitialized.current = true;
+      fetchCourses();
+    }
   }, []); // Empty dependency array ensures this runs only once on mount
 
   return {

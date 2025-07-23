@@ -144,7 +144,7 @@ export const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
               const optionLabel = filterOption?.options.find(opt => opt.value === value)?.label || value;
               
               return (
-                <span key={key} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <span key={`filter-${key}-${value}`} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                   {filterOption?.label}: {optionLabel}
                   <button
                     onClick={() => handleFilterChange(key, '')}

@@ -83,9 +83,37 @@ export default function Courses() {
         <Navbar />
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading courses...</p>
+            {/* Header skeleton */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="h-8 bg-gray-200 rounded w-48 mb-2 animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-64 animate-pulse"></div>
+                </div>
+                <div className="h-10 bg-gray-200 rounded w-24 animate-pulse"></div>
+              </div>
+            </div>
+            
+            {/* Search and filters skeleton */}
+            <div className="bg-white shadow rounded-lg p-6 mb-6 animate-pulse">
+              <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
+              <div className="h-10 bg-gray-200 rounded w-full mb-4"></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[...Array(3)].map((_, index) => (
+                  <div key={index} className="h-10 bg-gray-200 rounded"></div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Content skeleton */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, index) => (
+                <div key={index} className="bg-white shadow rounded-lg p-6 animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                  <div className="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -195,9 +223,9 @@ export default function Courses() {
 
           {/* Loading State */}
           {isLoading && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {[...Array(6)].map((_, index) => (
-                <div key={index} className="bg-white shadow rounded-lg p-6 animate-pulse">
+                <div key={`loading-${index}`} className="bg-white shadow rounded-lg p-6 animate-pulse">
                   <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
                   <div className="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
                   <div className="h-3 bg-gray-200 rounded w-2/3"></div>
@@ -211,7 +239,7 @@ export default function Courses() {
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                 {(courses ?? []).map((course) => (
-                  <div key={course.id} className="bg-white shadow rounded-lg p-6">
+                  <div key={`course-${course.id}`} className="bg-white shadow rounded-lg p-6">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-lg font-semibold text-gray-900">{course.name}</h3>
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
