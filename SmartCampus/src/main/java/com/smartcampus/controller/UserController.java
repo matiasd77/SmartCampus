@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,7 +28,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
+@Slf4j
 @Tag(name = "Users", description = "User profile and password management APIs")
 @SecurityRequirement(name = "Bearer Authentication")
 public class UserController {
@@ -137,16 +138,47 @@ public class UserController {
         )
     })
     public ResponseEntity<ApiResponse<UserDTO>> getCurrentUserProfile() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String email = authentication.getName();
-        
-        UserDTO userDTO = userService.getUserByEmail(email);
-        
-        return ResponseEntity.ok(ApiResponse.<UserDTO>builder()
-                .success(true)
-                .message("User profile retrieved successfully")
-                .data(userDTO)
-                .build());
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(401).body(ApiResponse.<UserDTO>builder()
+                        .success(false)
+                        .message("Authentication required")
+                        .data(null)
+                        .build());
+            }
+            
+            String email = authentication.getName();
+            
+            // Log authentication details for debugging
+            log.debug("Getting current user profile for email: {} with authorities: {}", 
+                    email, authentication.getAuthorities());
+            
+            UserDTO userDTO = userService.getUserByEmail(email);
+            
+            if (userDTO == null) {
+                return ResponseEntity.status(404).body(ApiResponse.<UserDTO>builder()
+                        .success(false)
+                        .message("User not found")
+                        .data(null)
+                        .build());
+            }
+            
+            return ResponseEntity.ok(ApiResponse.<UserDTO>builder()
+                    .success(true)
+                    .message("User profile retrieved successfully")
+                    .data(userDTO)
+                    .build());
+                    
+        } catch (Exception e) {
+            log.error("Error getting current user profile", e);
+            return ResponseEntity.status(500).body(ApiResponse.<UserDTO>builder()
+                    .success(false)
+                    .message("Internal server error")
+                    .data(null)
+                    .build());
+        }
     }
 
     @PutMapping("/me")

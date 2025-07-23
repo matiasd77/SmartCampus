@@ -1,0 +1,203 @@
+/* SmartCampus Theme Configuration */
+
+/* Remove conflicting root styles */
+#root {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+/* Theme Color Variables */
+:root {
+  --primary-color: #4f46e5; /* indigo-600 */
+  --primary-light: #6366f1; /* indigo-500 */
+  --primary-dark: #3730a3; /* indigo-700 */
+  --secondary-color: #059669; /* emerald-600 */
+  --secondary-light: #10b981; /* emerald-500 */
+  --secondary-dark: #047857; /* emerald-700 */
+  --accent-color: #7c3aed; /* violet-600 */
+  --accent-light: #8b5cf6; /* violet-500 */
+  --accent-dark: #6d28d9; /* violet-700 */
+  --success-color: #059669; /* emerald-600 */
+  --warning-color: #d97706; /* amber-600 */
+  --error-color: #dc2626; /* red-600 */
+  --info-color: #2563eb; /* blue-600 */
+}
+
+/* Global Typography */
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  line-height: 1.6;
+  color: #1e293b; /* slate-800 */
+}
+
+/* Consistent Card Styling */
+.card {
+  @apply bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden;
+}
+
+/* Consistent Button Styling */
+.btn-primary {
+  @apply bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105;
+}
+
+.btn-secondary {
+  @apply bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105;
+}
+
+.btn-accent {
+  @apply bg-gradient-to-r from-violet-500 to-violet-600 hover:from-violet-600 hover:to-violet-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105;
+}
+
+.btn-outline {
+  @apply border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105;
+}
+
+/* Consistent Form Styling */
+.form-input {
+  @apply w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200;
+}
+
+.form-label {
+  @apply block text-sm font-semibold text-gray-700 mb-2;
+}
+
+/* Consistent Badge Styling */
+.badge-primary {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800;
+}
+
+.badge-secondary {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800;
+}
+
+.badge-accent {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-violet-100 text-violet-800;
+}
+
+/* Consistent Icon Styling */
+.icon-primary {
+  @apply text-indigo-600;
+}
+
+.icon-secondary {
+  @apply text-emerald-600;
+}
+
+.icon-accent {
+  @apply text-violet-600;
+}
+
+/* Consistent Background Gradients */
+.bg-gradient-primary {
+  @apply bg-gradient-to-r from-indigo-500 to-indigo-600;
+}
+
+.bg-gradient-secondary {
+  @apply bg-gradient-to-r from-emerald-500 to-emerald-600;
+}
+
+.bg-gradient-accent {
+  @apply bg-gradient-to-r from-violet-500 to-violet-600;
+}
+
+.bg-gradient-subtle {
+  @apply bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50;
+}
+
+/* Consistent Shadow Styling */
+.shadow-soft {
+  @apply shadow-lg;
+}
+
+.shadow-medium {
+  @apply shadow-xl;
+}
+
+.shadow-strong {
+  @apply shadow-2xl;
+}
+
+/* Consistent Spacing */
+.section-padding {
+  @apply px-4 sm:px-6 lg:px-8 py-8;
+}
+
+.container-width {
+  @apply max-w-7xl mx-auto;
+}
+
+/* Consistent Animation Durations */
+.transition-fast {
+  @apply transition-all duration-200;
+}
+
+.transition-normal {
+  @apply transition-all duration-300;
+}
+
+.transition-slow {
+  @apply transition-all duration-500;
+}
+
+/* Responsive Typography */
+.text-heading-1 {
+  @apply text-3xl lg:text-4xl font-bold text-gray-900;
+}
+
+.text-heading-2 {
+  @apply text-2xl lg:text-3xl font-bold text-gray-900;
+}
+
+.text-heading-3 {
+  @apply text-xl lg:text-2xl font-semibold text-gray-900;
+}
+
+.text-body-large {
+  @apply text-lg text-gray-700;
+}
+
+.text-body {
+  @apply text-base text-gray-700;
+}
+
+.text-body-small {
+  @apply text-sm text-gray-600;
+}
+
+.text-caption {
+  @apply text-xs text-gray-500;
+}
+
+/* Focus States */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2;
+}
+
+/* Hover States */
+.hover-lift {
+  @apply hover:scale-105 hover:shadow-xl transition-all duration-200;
+}
+
+/* Loading States */
+.loading-pulse {
+  @apply animate-pulse bg-gray-200 rounded;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400;
+}

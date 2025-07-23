@@ -16,6 +16,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,7 +25,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/professors")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 @Tag(name = "Professors", description = "Professor management APIs")
 @SecurityRequirement(name = "Bearer Authentication")
 public class ProfessorController {
@@ -333,5 +334,37 @@ public class ProfessorController {
     public ResponseEntity<ApiResponse<Long>> getProfessorCountByStatus(@PathVariable ProfessorStatus status) {
         Long count = professorService.getProfessorCountByStatus(status);
         return ResponseEntity.ok(ApiResponse.success("Professor count by status retrieved successfully", count));
+    }
+
+    @GetMapping("/profile")
+    @PreAuthorize("hasRole('PROFESSOR')")
+    @Operation(
+        summary = "Get Current Professor Profile",
+        description = "Retrieve the current professor's profile information"
+    )
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "200",
+            description = "Professor profile retrieved successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ProfessorDTO.class)
+            )
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "404",
+            description = "Professor profile not found"
+        )
+    })
+    public ResponseEntity<ApiResponse<ProfessorDTO>> getCurrentProfessorProfile() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String email = authentication.getName();
+            ProfessorDTO professor = professorService.getProfessorByEmail(email);
+            return ResponseEntity.ok(ApiResponse.success("Professor profile retrieved successfully", professor));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error("Professor profile not found"));
+        }
     }
 } 

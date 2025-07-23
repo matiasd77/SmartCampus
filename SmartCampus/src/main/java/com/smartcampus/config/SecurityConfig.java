@@ -16,6 +16,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -29,12 +35,15 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                 .requestMatchers("/error").permitAll()
+                .requestMatchers("/api/users/me").hasAnyRole("STUDENT", "PROFESSOR", "ADMIN")
+                .requestMatchers("/api/users/me/**").hasAnyRole("STUDENT", "PROFESSOR", "ADMIN")
                 .requestMatchers("/api/students/**").hasAnyRole("STUDENT", "PROFESSOR", "ADMIN")
                 .requestMatchers("/api/professors/**").hasAnyRole("PROFESSOR", "ADMIN")
                 .requestMatchers("/api/courses/**").hasAnyRole("STUDENT", "PROFESSOR", "ADMIN")
@@ -51,6 +60,38 @@ public class SecurityConfig {
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        
+        // Allow specific origins (not wildcard)
+        configuration.setAllowedOrigins(Arrays.asList(
+            "http://localhost:5173",  // Vite dev server
+            "http://localhost:3000",  // Alternative dev server
+            "http://127.0.0.1:5173",  // Alternative localhost
+            "http://127.0.0.1:3000"   // Alternative localhost
+        ));
+        
+        // Allow all HTTP methods
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        
+        // Allow all headers
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        
+        // Allow credentials (cookies, authorization headers)
+        configuration.setAllowCredentials(true);
+        
+        // Set max age for preflight requests
+        configuration.setMaxAge(3600L);
+        
+        // Allow exposed headers
+        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/**", configuration);
+        return source;
     }
 
     @Bean

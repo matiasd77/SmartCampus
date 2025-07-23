@@ -4,6 +4,7 @@ import com.smartcampus.dto.ApiResponse;
 import com.smartcampus.dto.NotificationDTO;
 import com.smartcampus.entity.NotificationPriority;
 import com.smartcampus.entity.NotificationType;
+import com.smartcampus.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -21,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,14 +32,15 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 @Tag(name = "Notifications", description = "Notification management APIs")
 @SecurityRequirement(name = "Bearer Authentication")
 public class NotificationController {
 
     private final com.smartcampus.service.NotificationService notificationService;
+    private final UserService userService;
 
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     @Operation(
         summary = "Get Current User's Notifications",
         description = "Retrieve all notifications for the currently authenticated user"
@@ -56,10 +59,20 @@ public class NotificationController {
             description = "Unauthorized - Authentication required"
         )
     })
-    public ResponseEntity<ApiResponse<List<NotificationDTO>>> getCurrentUserNotifications() {
-        Long userId = getCurrentUserId();
-        List<NotificationDTO> notifications = notificationService.getNotificationsByUserId(userId);
-        return ResponseEntity.ok(ApiResponse.success("User notifications retrieved successfully", notifications));
+    public ResponseEntity<ApiResponse<List<NotificationDTO>>> getCurrentUserNotifications(@AuthenticationPrincipal String email) {
+        if (email == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.<List<NotificationDTO>>error("Authentication required"));
+        }
+        
+        try {
+            Long userId = userService.getUserByEmail(email).getId();
+            List<NotificationDTO> notifications = notificationService.getNotificationsByUserId(userId);
+            return ResponseEntity.ok(ApiResponse.success("User notifications retrieved successfully", notifications));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.<List<NotificationDTO>>error("Failed to retrieve notifications"));
+        }
     }
 
     @GetMapping("/paginated")
@@ -114,6 +127,7 @@ public class NotificationController {
     }
 
     @GetMapping("/unread/count")
+    @PreAuthorize("isAuthenticated()")
     @Operation(
         summary = "Get Current User's Unread Notification Count",
         description = "Get the count of unread notifications for the currently authenticated user"
@@ -135,10 +149,20 @@ public class NotificationController {
             description = "Unauthorized - Authentication required"
         )
     })
-    public ResponseEntity<ApiResponse<Long>> getCurrentUserUnreadCount() {
-        Long userId = getCurrentUserId();
-        Long count = notificationService.getNotificationCountByUserIdAndIsRead(userId, false);
-        return ResponseEntity.ok(ApiResponse.success("Unread count retrieved successfully", count));
+    public ResponseEntity<ApiResponse<Long>> getCurrentUserUnreadCount(@AuthenticationPrincipal String email) {
+        if (email == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.<Long>error("Authentication required"));
+        }
+        
+        try {
+            Long userId = userService.getUserByEmail(email).getId();
+            Long unreadCount = notificationService.getNotificationCountByUserIdAndIsRead(userId, false);
+            return ResponseEntity.ok(ApiResponse.success("Unread count retrieved successfully", unreadCount));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.<Long>error("Failed to retrieve unread count"));
+        }
     }
 
     @GetMapping("/{id}")

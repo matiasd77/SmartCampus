@@ -3,12 +3,14 @@ package com.smartcampus.service;
 import com.smartcampus.dto.GradeDTO;
 import com.smartcampus.entity.GradeStatus;
 import com.smartcampus.entity.GradeType;
+import org.springframework.data.domain.Page;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 public interface GradeService {
     List<GradeDTO> getAllGrades();
+    Page<GradeDTO> getAllGrades(int page, int size);
     GradeDTO getGradeById(Long id);
     GradeDTO getGradeByEnrollmentId(Long enrollmentId);
     GradeDTO createGrade(GradeDTO gradeDTO);

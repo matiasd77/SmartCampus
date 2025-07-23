@@ -24,7 +24,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/students")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 @Tag(name = "Students", description = "Student management APIs")
 @SecurityRequirement(name = "Bearer Authentication")
 public class StudentController {

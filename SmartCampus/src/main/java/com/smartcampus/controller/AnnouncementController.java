@@ -28,7 +28,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/announcements")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 @Tag(name = "Announcements", description = "Announcement management APIs")
 @SecurityRequirement(name = "Bearer Authentication")
 public class AnnouncementController {

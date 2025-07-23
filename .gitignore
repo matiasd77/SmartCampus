@@ -1,0 +1,397 @@
+# ===========================================
+# SmartCampus Full-Stack Project .gitignore
+# ===========================================
+
+# ===========================================
+# Frontend (React/Vite) - Global & Nested
+# ===========================================
+
+# Dependencies
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Build outputs
+dist/
+**/dist/
+dist-ssr/
+**/dist-ssr/
+build/
+**/build/
+.next/
+**/.next/
+out/
+**/out/
+
+# Environment variables
+.env
+**/.env
+.env.local
+**/.env.local
+.env.development.local
+**/.env.development.local
+.env.test.local
+**/.env.test.local
+.env.production.local
+**/.env.production.local
+
+# Vite
+*.local
+**/*.local
+
+# Testing
+coverage/
+**/coverage/
+.nyc_output/
+**/.nyc_output/
+*.lcov
+**/*.lcov
+
+# Logs
+logs/
+**/logs/
+*.log
+**/*.log
+
+# Runtime data
+pids/
+**/pids/
+*.pid
+**/*.pid
+*.seed
+**/*.seed
+*.pid.lock
+**/*.pid.lock
+
+# ===========================================
+# Backend (Spring Boot/Java) - Global & Nested
+# ===========================================
+
+# Compiled class files
+*.class
+**/*.class
+
+# Log files
+*.log
+**/*.log
+
+# BlueJ files
+*.ctxt
+**/*.ctxt
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+**/.mtj.tmp/
+
+# Package Files
+*.jar
+**/*.jar
+*.war
+**/*.war
+*.nar
+**/*.nar
+*.ear
+**/*.ear
+*.zip
+**/*.zip
+*.tar.gz
+**/*.tar.gz
+*.rar
+**/*.rar
+
+# Virtual machine crash logs
+hs_err_pid*
+**/hs_err_pid*
+replay_pid*
+**/replay_pid*
+
+# Maven
+target/
+**/target/
+pom.xml.tag
+**/pom.xml.tag
+pom.xml.releaseBackup
+**/pom.xml.releaseBackup
+pom.xml.versionsBackup
+**/pom.xml.versionsBackup
+pom.xml.next
+**/pom.xml.next
+release.properties
+**/release.properties
+dependency-reduced-pom.xml
+**/dependency-reduced-pom.xml
+buildNumber.properties
+**/buildNumber.properties
+.mvn/timing.properties
+**/.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+**/.mvn/wrapper/maven-wrapper.jar
+
+# Gradle
+.gradle/
+**/.gradle/
+build/
+**/build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# ===========================================
+# IDE & Editor Files
+# ===========================================
+
+# IntelliJ IDEA
+.idea/
+**/.idea/
+*.iws
+**/*.iws
+*.iml
+**/*.iml
+*.ipr
+**/*.ipr
+
+# Eclipse
+.apt_generated/
+**/.apt_generated/
+.classpath
+**/.classpath
+.factorypath
+**/.factorypath
+.project
+**/.project
+.settings/
+**/.settings/
+.springBeans
+**/.springBeans
+.sts4-cache/
+**/.sts4-cache/
+
+# NetBeans
+/nbproject/private/
+**/nbproject/private/
+/nbbuild/
+**/nbbuild/
+/dist/
+**/dist/
+/nbdist/
+**/nbdist/
+/.nb-gradle/
+**/.nb-gradle/
+build/
+**/build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# VS Code
+.vscode/
+**/.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+**/*.code-workspace
+
+# Sublime Text
+*.sublime-project
+**/*.sublime-project
+*.sublime-workspace
+**/*.sublime-workspace
+
+# Vim
+*.swp
+**/*.swp
+*.swo
+**/*.swo
+*~
+**/*~
+
+# Emacs
+*~
+**/*~
+\#*\#
+**/\#*\#
+/.emacs.desktop
+**/.emacs.desktop
+/.emacs.desktop.lock
+**/.emacs.desktop.lock
+*.elc
+**/*.elc
+auto-save-list
+**/auto-save-list
+tramp
+**/tramp
+.\#*
+**/.\#*
+
+# ===========================================
+# Operating System Files
+# ===========================================
+
+# macOS
+.DS_Store
+**/.DS_Store
+.AppleDouble
+**/.AppleDouble
+.LSOverride
+**/.LSOverride
+Icon
+**/Icon
+._*
+**/._*
+.DocumentRevisions-V100
+**/.DocumentRevisions-V100
+.fseventsd
+**/.fseventsd
+.Spotlight-V100
+**/.Spotlight-V100
+.TemporaryItems
+**/.TemporaryItems
+.Trashes
+**/.Trashes
+.VolumeIcon.icns
+**/.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+**/.com.apple.timemachine.donotpresent
+.AppleDB
+**/.AppleDB
+.AppleDesktop
+**/.AppleDesktop
+Network Trash Folder
+**/Network Trash Folder
+Temporary Items
+**/Temporary Items
+.apdisk
+**/.apdisk
+
+# Windows
+Thumbs.db
+**/Thumbs.db
+Thumbs.db:encryptable
+**/Thumbs.db:encryptable
+ehthumbs.db
+**/ehthumbs.db
+ehthumbs_vista.db
+**/ehthumbs_vista.db
+*.tmp
+**/*.tmp
+*.temp
+**/*.temp
+Desktop.ini
+**/Desktop.ini
+$RECYCLE.BIN/
+**/$RECYCLE.BIN/
+*.cab
+**/*.cab
+*.msi
+**/*.msi
+*.msix
+**/*.msix
+*.msm
+**/*.msm
+*.msp
+**/*.msp
+*.lnk
+**/*.lnk
+
+# Linux
+*~
+**/*~
+.fuse_hidden*
+**/.fuse_hidden*
+.directory
+**/.directory
+.Trash-*
+**/.Trash-*
+.nfs*
+**/.nfs*
+
+# ===========================================
+# Database & Configuration Files
+# ===========================================
+
+# Database
+*.db
+**/*.db
+*.sqlite
+**/*.sqlite
+*.sqlite3
+**/*.sqlite3
+
+# Application specific
+application.properties
+**/application.properties
+application.yml
+**/application.yml
+application.yaml
+**/application.yaml
+!src/main/resources/application.properties
+!src/main/resources/application.yml
+!src/main/resources/application.yaml
+
+# ===========================================
+# Temporary & Cache Files
+# ===========================================
+
+# Temporary files
+*.tmp
+**/*.tmp
+*.temp
+**/*.temp
+*.swp
+**/*.swp
+*.swo
+**/*.swo
+*~
+**/*~
+
+# Cache directories
+.cache/
+**/.cache/
+.parcel-cache/
+**/.parcel-cache/
+.eslintcache
+**/.eslintcache
+.stylelintcache
+**/.stylelintcache
+
+# ===========================================
+# Security & Sensitive Files
+# ===========================================
+
+# Keys and certificates
+*.pem
+**/*.pem
+*.key
+**/*.key
+*.crt
+**/*.crt
+*.p12
+**/*.p12
+*.pfx
+**/*.pfx
+
+# ===========================================
+# Documentation & Help Files
+# ===========================================
+
+# Help files (optional - uncomment if you want to ignore them)
+# HELP.md
+# **/HELP.md
+
+# ===========================================
+# Project Specific
+# ===========================================
+
+# Keep specific files that might be ignored by patterns above
+!**/src/main/**/target/
+!**/src/test/**/target/
+!**/src/main/**/build/
+!**/src/test/**/build/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json 

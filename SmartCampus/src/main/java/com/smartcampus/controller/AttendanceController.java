@@ -24,7 +24,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/attendance")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 @Tag(name = "Attendance", description = "Attendance tracking APIs")
 @SecurityRequirement(name = "Bearer Authentication")
 public class AttendanceController {

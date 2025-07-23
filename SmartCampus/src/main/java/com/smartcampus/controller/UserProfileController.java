@@ -23,7 +23,6 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/profile")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 @Tag(name = "User Profile", description = "User profile and password management APIs")
 @SecurityRequirement(name = "Bearer Authentication")
 public class UserProfileController {

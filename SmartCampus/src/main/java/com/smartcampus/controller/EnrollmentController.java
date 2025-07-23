@@ -25,7 +25,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/enrollments")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 @Tag(name = "Enrollments", description = "Course enrollment management APIs")
 @SecurityRequirement(name = "Bearer Authentication")
 public class EnrollmentController {

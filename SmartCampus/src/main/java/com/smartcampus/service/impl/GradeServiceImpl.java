@@ -12,6 +12,9 @@ import com.smartcampus.repository.EnrollmentRepository;
 import com.smartcampus.repository.GradeRepository;
 import com.smartcampus.service.GradeService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +35,14 @@ public class GradeServiceImpl implements GradeService {
     public List<GradeDTO> getAllGrades() {
         List<Grade> grades = gradeRepository.findAll();
         return gradeMapper.toDtoList(grades);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<GradeDTO> getAllGrades(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Grade> gradesPage = gradeRepository.findAll(pageable);
+        return gradesPage.map(gradeMapper::toDto);
     }
 
     @Override

@@ -23,7 +23,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/courses")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 @Tag(name = "Courses", description = "Course management APIs")
 @SecurityRequirement(name = "Bearer Authentication")
 public class CourseController {

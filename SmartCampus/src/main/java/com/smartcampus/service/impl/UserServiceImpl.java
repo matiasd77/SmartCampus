@@ -4,6 +4,7 @@ import com.smartcampus.dto.ChangePasswordDTO;
 import com.smartcampus.dto.RegisterRequest;
 import com.smartcampus.dto.UpdateProfileDTO;
 import com.smartcampus.dto.UserDTO;
+import com.smartcampus.entity.Role;
 import com.smartcampus.entity.User;
 import com.smartcampus.exception.PasswordChangeException;
 import com.smartcampus.exception.ResourceNotFoundException;
@@ -30,11 +31,19 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("User with this email already exists");
         }
 
+        // Ensure only STUDENT role is allowed for public registration
+        Role userRole = request.getRole();
+        if (userRole == null) {
+            userRole = Role.STUDENT; // Default to STUDENT if no role provided
+        } else if (userRole != Role.STUDENT) {
+            throw new RuntimeException("Only STUDENT role is allowed for public registration. Professors and Admins must be created by administrators.");
+        }
+
         User user = User.builder()
                 .name(request.getName())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(request.getRole())
+                .role(userRole)
                 .build();
 
         return userRepository.save(user);

@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,12 +27,38 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/grades")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 @Tag(name = "Grades", description = "Grade management APIs")
 @SecurityRequirement(name = "Bearer Authentication")
 public class GradeController {
 
     private final GradeService gradeService;
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('STUDENT', 'PROFESSOR', 'ADMIN')")
+    @Operation(
+        summary = "Get All Grades",
+        description = "Retrieve all grades with pagination support"
+    )
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "200",
+            description = "Grades retrieved successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = GradeDTO.class)
+            )
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "403",
+            description = "Forbidden - Insufficient permissions"
+        )
+    })
+    public ResponseEntity<ApiResponse<Page<GradeDTO>>> getGrades(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Page<GradeDTO> grades = gradeService.getAllGrades(page, size);
+        return ResponseEntity.ok(ApiResponse.success("Grades retrieved successfully", grades));
+    }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('PROFESSOR', 'ADMIN')")
