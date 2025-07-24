@@ -18,7 +18,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -40,6 +42,9 @@ public class AuthController {
     private final AuthService authService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+
+    @Value("${spring.profiles.active:dev}")
+    private String activeProfile;
 
     @PostMapping("/login")
     @Operation(
@@ -180,9 +185,11 @@ public class AuthController {
     }
 
     @PostMapping("/create-test-admin")
+    @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "Bearer Authentication")
     @Operation(
         summary = "Create Test Admin (Debug)",
-        description = "Create a test admin user for debugging purposes"
+        description = "Create a test admin user for debugging purposes. Only available in development environment and requires ADMIN role."
     )
     @ApiResponses(value = {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -192,9 +199,20 @@ public class AuthController {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
             responseCode = "409",
             description = "Admin already exists"
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "403",
+            description = "Access denied - requires ADMIN role or not in development environment"
         )
     })
     public ResponseEntity<ApiResponse<Map<String, Object>>> createTestAdmin() {
+        // Check if we're in development environment
+        if (!isDevelopmentEnvironment()) {
+            log.warn("Attempted to access create-test-admin endpoint in non-development environment: {}", activeProfile);
+            return ResponseEntity.status(403)
+                    .body(ApiResponse.<Map<String, Object>>error("This endpoint is only available in development environment"));
+        }
+
         try {
             log.info("Creating test admin user");
             
@@ -282,9 +300,11 @@ public class AuthController {
     }
 
     @GetMapping("/test-user/{email}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "Bearer Authentication")
     @Operation(
         summary = "Test User Existence",
-        description = "Debug endpoint to check if a user exists in the database"
+        description = "Debug endpoint to check if a user exists in the database. Only available in development environment and requires ADMIN role."
     )
     @ApiResponses(value = {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -294,9 +314,20 @@ public class AuthController {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
             responseCode = "404",
             description = "User not found"
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "403",
+            description = "Access denied - requires ADMIN role or not in development environment"
         )
     })
     public ResponseEntity<ApiResponse<Map<String, Object>>> testUser(@PathVariable String email) {
+        // Check if we're in development environment
+        if (!isDevelopmentEnvironment()) {
+            log.warn("Attempted to access test-user endpoint in non-development environment: {}", activeProfile);
+            return ResponseEntity.status(403)
+                    .body(ApiResponse.<Map<String, Object>>error("This endpoint is only available in development environment"));
+        }
+
         try {
             log.info("Testing user existence for email: {}", email);
             
@@ -372,9 +403,11 @@ public class AuthController {
     }
 
     @PostMapping("/update-admin-password")
+    @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "Bearer Authentication")
     @Operation(
         summary = "Update Admin Password (Debug)",
-        description = "Update the admin user password to a known working value for debugging"
+        description = "Update the admin user password to a known working value for debugging. Only available in development environment and requires ADMIN role."
     )
     @ApiResponses(value = {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -384,9 +417,20 @@ public class AuthController {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
             responseCode = "404",
             description = "Admin user not found"
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "403",
+            description = "Access denied - requires ADMIN role or not in development environment"
         )
     })
     public ResponseEntity<ApiResponse<Map<String, Object>>> updateAdminPassword() {
+        // Check if we're in development environment
+        if (!isDevelopmentEnvironment()) {
+            log.warn("Attempted to access update-admin-password endpoint in non-development environment: {}", activeProfile);
+            return ResponseEntity.status(403)
+                    .body(ApiResponse.<Map<String, Object>>error("This endpoint is only available in development environment"));
+        }
+
         try {
             User admin = userRepository.findByEmail("admin@smartcampus.com")
                     .orElse(null);
@@ -429,17 +473,30 @@ public class AuthController {
     }
 
     @PostMapping("/replace-admin")
+    @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "Bearer Authentication")
     @Operation(
         summary = "Replace Admin User (Debug)",
-        description = "Delete existing admin and create a fresh one with correct password"
+        description = "Delete existing admin and create a fresh one with correct password. Only available in development environment and requires ADMIN role."
     )
     @ApiResponses(value = {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
             responseCode = "200",
             description = "Admin replaced successfully"
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "403",
+            description = "Access denied - requires ADMIN role or not in development environment"
         )
     })
     public ResponseEntity<ApiResponse<Map<String, Object>>> replaceAdmin() {
+        // Check if we're in development environment
+        if (!isDevelopmentEnvironment()) {
+            log.warn("Attempted to access replace-admin endpoint in non-development environment: {}", activeProfile);
+            return ResponseEntity.status(403)
+                    .body(ApiResponse.<Map<String, Object>>error("This endpoint is only available in development environment"));
+        }
+
         try {
             log.info("Replacing admin user");
             
@@ -481,5 +538,9 @@ public class AuthController {
             return ResponseEntity.status(500)
                     .body(ApiResponse.<Map<String, Object>>error("Failed to replace admin"));
         }
+    }
+
+    private boolean isDevelopmentEnvironment() {
+        return "dev".equalsIgnoreCase(activeProfile);
     }
 } 
