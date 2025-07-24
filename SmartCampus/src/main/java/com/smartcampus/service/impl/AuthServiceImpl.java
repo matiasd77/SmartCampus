@@ -32,28 +32,39 @@ public class AuthServiceImpl implements AuthService {
         log.info("Starting login process for email: {}", request.getEmail());
         
         try {
+            // First, check if user exists in database
+            User user = userRepository.findByEmail(request.getEmail())
+                    .orElse(null);
+            
+            if (user == null) {
+                log.warn("Login failed - User not found in database for email: {}", request.getEmail());
+                throw new RuntimeException("Invalid email or password");
+            }
+            
+            log.info("User found in database: {} (ID: {}) with role: {} and isActive: {}", 
+                    user.getName(), user.getId(), user.getRole(), user.getIsActive());
+            
+            // Check if user is active
+            if (user.getIsActive() == null || !user.getIsActive()) {
+                log.warn("Login failed - User account is inactive for email: {}", request.getEmail());
+                throw new RuntimeException("Account is inactive");
+            }
+            
             // Attempt authentication
             log.debug("Attempting authentication for email: {}", request.getEmail());
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
             );
 
-            log.debug("Authentication successful for email: {}", request.getEmail());
+            log.info("Authentication successful for email: {}", request.getEmail());
             SecurityContextHolder.getContext().setAuthentication(authentication);
             
             // Generate JWT token
             log.debug("Generating JWT token for email: {}", request.getEmail());
             String jwt = jwtTokenProvider.generateToken(authentication);
 
-            // Fetch user details
-            log.debug("Fetching user details for email: {}", request.getEmail());
-            User user = userRepository.findByEmail(request.getEmail())
-                    .orElseThrow(() -> {
-                        log.error("User not found in database after successful authentication for email: {}", request.getEmail());
-                        return new RuntimeException("User not found");
-                    });
-
-            log.info("Login successful for user: {} (ID: {})", user.getName(), user.getId());
+            log.info("Login successful for user: {} (ID: {}) with role: {}", 
+                    user.getName(), user.getId(), user.getRole());
             
             return JwtResponse.builder()
                     .token(jwt)
@@ -64,7 +75,7 @@ public class AuthServiceImpl implements AuthService {
                     .build();
                     
         } catch (Exception e) {
-            log.error("Login failed for email: {}", request.getEmail(), e);
+            log.error("Login failed for email: {} - Error: {}", request.getEmail(), e.getMessage(), e);
             throw e; // Re-throw to be handled by controller
         }
     }

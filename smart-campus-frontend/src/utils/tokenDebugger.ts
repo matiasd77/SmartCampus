@@ -1,6 +1,6 @@
 // Token debugging utility for JWT token analysis
 
-import { getUserRole, hasAnyRole, getUserPermissions } from './authUtils';
+import { getStoredToken, getUserPermissions, hasAnyRole } from './authUtils';
 
 export interface TokenInfo {
   subject: string;
@@ -100,10 +100,10 @@ export const analyzeToken = (token: string): TokenDebugInfo => {
 export const debugAuthState = () => {
   console.log('🔍 === AUTH STATE DEBUG ===');
   
-  const token = localStorage.getItem('token');
+  const token = getStoredToken();
   const user = localStorage.getItem('user');
   
-  console.log('📋 Token exists:', !!token);
+  console.log('�� Token exists:', !!token);
   console.log('📋 User data exists:', !!user);
   
   if (token) {
@@ -344,13 +344,59 @@ export const testDebugEndpoint = async () => {
   }
 };
 
-// Make functions available globally for debugging
+export const testAuthEndpoint = async () => {
+  try {
+    console.log('🔧 Testing /api/auth/current-user endpoint...');
+    const response = await fetch('http://localhost:8080/api/auth/current-user', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${getStoredToken()}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    console.log('🔧 Auth endpoint response status:', response.status);
+    const data = await response.json();
+    console.log('🔧 Auth endpoint response data:', data);
+    
+    return { status: response.status, data };
+  } catch (error) {
+    console.error('🔧 Auth endpoint test failed:', error);
+    return { status: 'ERROR', data: error };
+  }
+};
+
+export const testUsersMeEndpoint = async () => {
+  try {
+    console.log('🔧 Testing /api/users/me endpoint...');
+    const response = await fetch('http://localhost:8080/api/users/me', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${getStoredToken()}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    console.log('🔧 Users/me endpoint response status:', response.status);
+    const data = await response.json();
+    console.log('🔧 Users/me endpoint response data:', data);
+    
+    return { status: response.status, data };
+  } catch (error) {
+    console.error('🔧 Users/me endpoint test failed:', error);
+    return { status: 'ERROR', data: error };
+  }
+};
+
+// Make debug functions globally available
 if (typeof window !== 'undefined') {
   (window as any).debugAuthState = debugAuthState;
   (window as any).testAllEndpoints = testAllEndpoints;
   (window as any).testAnnouncementsEndpoint = testAnnouncementsEndpoint;
   (window as any).testAllAnnouncementsEndpoints = testAllAnnouncementsEndpoints;
   (window as any).testDebugEndpoint = testDebugEndpoint;
+  (window as any).testAuthEndpoint = testAuthEndpoint;
+  (window as any).testUsersMeEndpoint = testUsersMeEndpoint;
   
   console.log('🔧 Debug functions available globally:');
   console.log('  - debugAuthState()');
@@ -358,4 +404,6 @@ if (typeof window !== 'undefined') {
   console.log('  - testAnnouncementsEndpoint()');
   console.log('  - testAllAnnouncementsEndpoints()');
   console.log('  - testDebugEndpoint()');
+  console.log('  - testAuthEndpoint()');
+  console.log('  - testUsersMeEndpoint()');
 } 

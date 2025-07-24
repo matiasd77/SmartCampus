@@ -116,16 +116,21 @@ public class JwtTokenProvider {
                     .map(authority -> authority.getAuthority())
                     .collect(Collectors.toList());
 
-            log.info("Generating JWT token for user: {} with authorities: {}", 
-                    userDetails.getUsername(), authorities);
+            // Create role names without ROLE_ prefix for Spring Security hasAnyRole()
+            List<String> roles = authorities.stream()
+                    .map(authority -> authority.startsWith("ROLE_") ? authority.substring(5) : authority)
+                    .collect(Collectors.toList());
+
+            log.info("Generating JWT token for user: {} with authorities: {} and roles: {}", 
+                    userDetails.getUsername(), authorities, roles);
 
             return Jwts.builder()
                     .setSubject(userDetails.getUsername())
                     .setIssuedAt(now)
                     .setExpiration(expiryDate)
                     .setIssuer(jwtConfig.getIssuer())
-                    .claim("authorities", authorities)
-                    .claim("roles", authorities)
+                    .claim("authorities", authorities)  // Full authorities with ROLE_ prefix
+                    .claim("roles", roles)             // Roles without ROLE_ prefix for hasAnyRole()
                     .signWith(getSigningKey(), SignatureAlgorithm.HS512)
                     .compact();
         } catch (Exception e) {
@@ -187,6 +192,30 @@ public class JwtTokenProvider {
             return authorities;
         } catch (Exception e) {
             log.error("Failed to extract authorities from JWT token", e);
+            return List.of();
+        }
+    }
+
+    public List<String> getRolesFromToken(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(getSigningKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+
+            @SuppressWarnings("unchecked")
+            List<String> roles = claims.get("roles", List.class);
+            
+            if (roles == null) {
+                log.warn("No roles found in JWT token for user: {}", claims.getSubject());
+                return List.of();
+            }
+            
+            log.info("Extracted roles from JWT token: {} for user: {}", roles, claims.getSubject());
+            return roles;
+        } catch (Exception e) {
+            log.error("Failed to extract roles from JWT token", e);
             return List.of();
         }
     }

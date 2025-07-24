@@ -21,7 +21,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        log.debug("Loading user details for email: {}", email);
+        log.info("Loading user details for email: {}", email);
         
         try {
             User user = userRepository.findByEmail(email)
@@ -30,12 +30,23 @@ public class CustomUserDetailsService implements UserDetailsService {
                         return new UsernameNotFoundException("User not found with email: " + email);
                     });
 
-            log.debug("User found: {} (ID: {}) with role: {}", user.getName(), user.getId(), user.getRole());
+            log.info("User found: {} (ID: {}) with role: {} and isActive: {}", 
+                    user.getName(), user.getId(), user.getRole(), user.getIsActive());
+
+            // Check if user is active
+            if (user.getIsActive() == null || !user.getIsActive()) {
+                log.warn("User account is inactive for email: {}", email);
+                throw new UsernameNotFoundException("User account is inactive: " + email);
+            }
+
+            // Create authorities with ROLE_ prefix
+            String authority = "ROLE_" + user.getRole().name();
+            log.info("Creating UserDetails with authority: {} for user: {}", authority, email);
 
             return new org.springframework.security.core.userdetails.User(
                     user.getEmail(),
                     user.getPassword(),
-                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
+                    Collections.singletonList(new SimpleGrantedAuthority(authority))
             );
         } catch (UsernameNotFoundException e) {
             throw e; // Re-throw UsernameNotFoundException

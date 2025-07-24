@@ -71,6 +71,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Validate token with backend
           try {
             console.log('AuthContext: Validating token with backend...');
+            
+            // First try the new auth endpoint for debugging
+            try {
+              const authData = await authAPI.getCurrentUserAuth();
+              console.log('AuthContext: Auth endpoint validation successful:', authData);
+            } catch (authError: any) {
+              console.warn('AuthContext: Auth endpoint failed, trying users/me:', authError.response?.status);
+            }
+            
+            // Then try the regular users/me endpoint
             const userData = await authAPI.getCurrentUser();
             console.log('AuthContext: Token validation successful, user data:', userData);
             

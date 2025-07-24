@@ -302,6 +302,49 @@ export const authAPI = {
       throw error;
     }
   },
+
+  getCurrentUserAuth: async (): Promise<any> => {
+    console.log('authAPI.getCurrentUserAuth - Making request to /auth/current-user');
+    
+    // Debug token information
+    const token = getStoredToken();
+    console.log('authAPI.getCurrentUserAuth - Token present:', !!token);
+    
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        console.log('authAPI.getCurrentUserAuth - Token payload:', {
+          subject: payload.sub,
+          authorities: payload.authorities || payload.roles || 'No authorities found',
+          issuedAt: new Date(payload.iat * 1000).toISOString(),
+          expiresAt: new Date(payload.exp * 1000).toISOString(),
+          issuer: payload.iss
+        });
+      } catch (error) {
+        console.error('authAPI.getCurrentUserAuth - Error parsing token:', error);
+      }
+    }
+    
+    try {
+      const response = await api.get('/auth/current-user');
+      console.log('authAPI.getCurrentUserAuth - Response:', response.data);
+      
+      // Handle ApiResponse wrapper structure
+      if (response.data && response.data.success && response.data.data) {
+        console.log('authAPI.getCurrentUserAuth - Extracting user data from ApiResponse');
+        return response.data.data;
+      } else {
+        console.error('authAPI.getCurrentUserAuth - Unexpected response structure:', response.data);
+        throw new Error('Invalid response structure from getCurrentUserAuth');
+      }
+    } catch (error: any) {
+      console.error('authAPI.getCurrentUserAuth - Error:', error);
+      console.error('authAPI.getCurrentUserAuth - Error response:', error.response?.data);
+      console.error('authAPI.getCurrentUserAuth - Error status:', error.response?.status);
+      console.error('authAPI.getCurrentUserAuth - Error statusText:', error.response?.statusText);
+      throw error;
+    }
+  },
 };
 
 // Profile API calls
