@@ -5,6 +5,8 @@ import { useDashboardData } from '../hooks/useDashboardData';
 import { SummaryCard } from '../components/SummaryCard';
 import { NetworkStatus } from '../components/NetworkStatus';
 import { ActivityFeed } from '../components/ActivityFeed';
+import { UsersTable } from '../components/UsersTable';
+
 import { Navbar } from '../components/Navbar';
 import { getUserDisplayName } from '../utils/userUtils';
 import { hasAnyRole } from '../utils/authUtils';
@@ -23,7 +25,8 @@ import {
   ArrowRight,
   Star,
   Activity,
-  Zap
+  Zap,
+  Shield
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -260,7 +263,7 @@ export default function Dashboard() {
             </>
           )}
         </div>
-        
+
         {/* Enhanced Quick Actions & Recent Activity Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 mb-12">
           {/* Enhanced Quick Actions */}
@@ -438,6 +441,32 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* Admin Users Table */}
+        {user?.role === 'ADMIN' && (
+          <div className="mb-12">
+            <div className="relative overflow-hidden rounded-3xl bg-white shadow-2xl border border-gray-100">
+              <div className="relative overflow-hidden px-8 py-6 bg-gradient-to-r from-blue-500 to-indigo-600">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-700 opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="relative flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-lg mr-4">
+                      <Users className="w-6 h-6 text-white" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white">All Users</h3>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Shield className="w-5 h-5 text-white/80" />
+                    <span className="text-white/80 text-sm font-medium">Admin View</span>
+                  </div>
+                </div>
+              </div>
+              <div className="p-8">
+                <UsersTable />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

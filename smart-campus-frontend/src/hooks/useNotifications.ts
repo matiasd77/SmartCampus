@@ -97,13 +97,37 @@ export const useNotifications = (initialPage = 0, initialPageSize = 10) => {
 
   // Main effect for initial data loading
   useEffect(() => {
+    console.log('useNotifications: useEffect triggered', {
+      authLoading,
+      isAuthenticated,
+      isInitialized: isInitialized.current,
+      currentPage: currentPageRef.current,
+      pageSize: pageSizeRef.current,
+      filters: filtersRef.current
+    });
+    
     if (!authLoading && isAuthenticated && !isInitialized.current) {
       console.log('useNotifications: Auth ready, starting initial data fetch');
       isInitialized.current = true;
       fetchNotifications(currentPageRef.current, pageSizeRef.current, filtersRef.current);
       fetchUnreadCount();
+    } else if (!authLoading && !isAuthenticated) {
+      console.log('useNotifications: User not authenticated, clearing data');
+      setNotifications([]);
+      setError(null);
+      isInitialized.current = false;
     }
-  }, [authLoading, isAuthenticated, fetchNotifications, fetchUnreadCount]);
+  }, [authLoading, isAuthenticated]); // Removed fetchNotifications and fetchUnreadCount from dependencies
+
+  // Additional effect to ensure data is loaded on mount
+  useEffect(() => {
+    console.log('useNotifications: Mount effect triggered');
+    if (!authLoading && isAuthenticated && notifications.length === 0 && !isLoading) {
+      console.log('useNotifications: Mount effect - loading data');
+      fetchNotifications(currentPageRef.current, pageSizeRef.current, filtersRef.current);
+      fetchUnreadCount();
+    }
+  }, []); // Only run on mount
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
@@ -217,8 +241,12 @@ export const useNotifications = (initialPage = 0, initialPageSize = 10) => {
   }, [fetchNotifications, showSuccess, showError]);
 
   const refresh = useCallback(() => {
-    fetchNotifications(currentPageRef.current, pageSizeRef.current, filtersRef.current);
-  }, [fetchNotifications]);
+    console.log('useNotifications: Manual refresh triggered');
+    if (isAuthenticated) {
+      fetchNotifications(currentPageRef.current, pageSizeRef.current, filtersRef.current);
+      fetchUnreadCount();
+    }
+  }, [isAuthenticated]);
 
   return {
     notifications,

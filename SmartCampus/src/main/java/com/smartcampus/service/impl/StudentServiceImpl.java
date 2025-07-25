@@ -76,8 +76,11 @@ public class StudentServiceImpl implements StudentService {
 
     @Override
     public StudentDTO createStudent(StudentDTO studentDTO) {
+        System.out.println("🔍 StudentServiceImpl.createStudent - Starting with data: " + studentDTO);
+        
         // Check if student ID already exists
         if (studentRepository.existsByStudentId(studentDTO.getStudentId())) {
+            System.err.println("🔍 StudentServiceImpl.createStudent - Student ID already exists: " + studentDTO.getStudentId());
             throw new RuntimeException("Student with ID " + studentDTO.getStudentId() + " already exists");
         }
 
@@ -85,20 +88,33 @@ public class StudentServiceImpl implements StudentService {
         User user = userRepository.findById(studentDTO.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + studentDTO.getUserId()));
 
+        System.out.println("🔍 StudentServiceImpl.createStudent - Found user: " + user);
+
         if (user.getRole() != com.smartcampus.entity.Role.STUDENT) {
+            System.err.println("🔍 StudentServiceImpl.createStudent - User role is not STUDENT: " + user.getRole());
             throw new RuntimeException("User must have STUDENT role");
         }
 
         // Check if user already has a student profile
         if (studentRepository.existsByUserId(studentDTO.getUserId())) {
+            System.err.println("🔍 StudentServiceImpl.createStudent - User already has student profile: " + studentDTO.getUserId());
             throw new RuntimeException("User already has a student profile");
         }
 
+        System.out.println("🔍 StudentServiceImpl.createStudent - Creating student entity...");
         Student student = studentMapper.toEntity(studentDTO);
-        student.setUser(user);
+        System.out.println("🔍 StudentServiceImpl.createStudent - Mapped entity: " + student);
         
+        student.setUser(user);
+        System.out.println("🔍 StudentServiceImpl.createStudent - Set user on student: " + student);
+        
+        System.out.println("🔍 StudentServiceImpl.createStudent - About to save student...");
         Student savedStudent = studentRepository.save(student);
-        return studentMapper.toDto(savedStudent);
+        System.out.println("🔍 StudentServiceImpl.createStudent - Student saved: " + savedStudent);
+        
+        StudentDTO result = studentMapper.toDto(savedStudent);
+        System.out.println("🔍 StudentServiceImpl.createStudent - Returning DTO: " + result);
+        return result;
     }
 
     @Override

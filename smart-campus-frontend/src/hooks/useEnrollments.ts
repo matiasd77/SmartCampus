@@ -5,7 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 
 export const useEnrollments = () => {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // Changed from true to false
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -160,8 +160,10 @@ export const useEnrollments = () => {
   };
 
   useEffect(() => {
-    console.log('useEnrollments: Initial data fetch on mount');
-    fetchEnrollments();
+    // Don't automatically fetch all enrollments on mount
+    // Students don't have permission to access /enrollments endpoint
+    // They should only access their own enrollments via /enrollments/student/{id}
+    console.log('useEnrollments: Skipping initial data fetch - use specific methods instead');
   }, []); // Empty dependency array ensures this runs only once on mount
 
   return {

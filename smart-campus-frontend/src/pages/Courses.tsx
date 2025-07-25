@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCourses } from '../hooks/useCourses';
+import { useEnrollments } from '../hooks/useEnrollments';
 import { SearchAndFilters } from '../components/SearchAndFilters';
 import { Pagination } from '../components/Pagination';
 import CourseForm from '../components/CourseForm';
@@ -17,8 +18,12 @@ import {
   Filter,
   Calendar,
   Users,
-  TrendingUp
+  TrendingUp,
+  UserPlus,
+  UserMinus,
+  UserCheck
 } from 'lucide-react';
+import React from 'react';
 
 export default function Courses() {
   const { user, isLoading: authLoading } = useAuth();
@@ -44,14 +49,301 @@ export default function Courses() {
     goToPage,
   } = useCourses();
 
+  // Debug: Show current user info
+  console.log('=== COURSES PAGE DEBUG ===');
+  console.log('Current user:', user);
+  console.log('User ID:', user?.id);
+  console.log('User role:', user?.role);
+  console.log('User email:', user?.email);
+  console.log('========================');
+
+  // Debug function to check students
+  const debugCheckStudents = async () => {
+    try {
+      console.log('=== DEBUG: Checking students in database ===');
+      const response = await fetch('http://localhost:8080/api/students', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await response.json();
+      console.log('Students in database:', data);
+    } catch (error) {
+      console.error('Error checking students:', error);
+    }
+  };
+
+  // Function to create student profile for current user
+  const createStudentProfile = async () => {
+    if (!user?.id || !user?.email) return false;
+    
+    try {
+      console.log('=== Creating student profile for user ===');
+      console.log('User ID:', user.id);
+      console.log('User email:', user.email);
+      
+      const studentData = {
+        firstName: user.name?.split(' ')[0] || 'Student',
+        lastName: user.name?.split(' ').slice(1).join(' ') || 'User',
+        email: user.email,
+        studentId: `STU${user.id.toString().padStart(4, '0')}`,
+        major: 'Computer Science', // Default major
+        yearOfStudy: 1, // Default year
+        status: 'ACTIVE'
+      };
+      
+      console.log('Student data to create:', studentData);
+      
+      const response = await fetch('http://localhost:8080/api/students', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(studentData)
+      });
+      
+      const result = await response.json();
+      console.log('Student creation result:', result);
+      console.log('Response status:', response.status);
+      console.log('Response status text:', response.statusText);
+      
+      if (response.ok) {
+        console.log('✅ Student profile created successfully!');
+        return true;
+      } else {
+        console.error('❌ Failed to create student profile:', result);
+        console.error('Response status:', response.status);
+        console.error('Response headers:', response.headers);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error creating student profile:', error);
+      return false;
+    }
+  };
+
+  // Call debug function on component mount
+  React.useEffect(() => {
+    if (user?.role === 'ADMIN') {
+      debugCheckStudents();
+    }
+  }, [user?.role]);
+
+  // Debug function to show current student status
+  const debugStudentStatus = async () => {
+    try {
+      console.log('=== DEBUG: Checking student status ===');
+      console.log('Current user ID:', user?.id);
+      console.log('Current user email:', user?.email);
+      
+      // Check if current user has a student record
+      const response = await fetch(`http://localhost:8080/api/students/${user?.id}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const studentData = await response.json();
+        console.log('✅ Student record found:', studentData);
+        alert('✅ Student record found! You should be able to enroll now.');
+      } else {
+        console.log('❌ No student record found for user ID:', user?.id);
+        alert('❌ No student record found for your user account.\n\nYou need a student profile to enroll in courses.');
+      }
+    } catch (error) {
+      console.error('Error checking student status:', error);
+      alert('Error checking student status. Please check console for details.');
+    }
+  };
+
+  const {
+    enrollments,
+    createEnrollment,
+    deleteEnrollment,
+    getStudentEnrollments,
+    isLoading: enrollmentsLoading,
+  } = useEnrollments();
+
   const [searchValue, setSearchValue] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [studentEnrollments, setStudentEnrollments] = useState<number[]>([]);
+  const [enrollingCourseId, setEnrollingCourseId] = useState<number | null>(null);
+  const [droppingCourseId, setDroppingCourseId] = useState<number | null>(null);
 
   // Wait for auth to be initialized before showing any content
   if (authLoading) {
     return <FullScreenLoader message="Loading courses..." />;
   }
+
+  const isAdmin = user?.role === 'ADMIN';
+  const isProfessor = user?.role === 'PROFESSOR';
+  const isStudent = user?.role === 'STUDENT';
+
+  // Load student enrollments when component mounts
+  React.useEffect(() => {
+    if (isStudent && user?.id) {
+      loadStudentEnrollments();
+    }
+  }, [isStudent, user?.id]);
+
+  const loadStudentEnrollments = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const response = await getStudentEnrollments(user.id);
+      console.log('Student enrollments response:', response);
+      
+      // Handle different response structures
+      let studentEnrollmentsData;
+      if (response.data && Array.isArray(response.data)) {
+        studentEnrollmentsData = response.data;
+      } else if (Array.isArray(response)) {
+        studentEnrollmentsData = response;
+      } else if (response.content && Array.isArray(response.content)) {
+        studentEnrollmentsData = response.content;
+      } else {
+        console.warn('Unexpected enrollment response structure:', response);
+        studentEnrollmentsData = [];
+      }
+      
+      const enrolledCourseIds = studentEnrollmentsData.map((enrollment: any) => enrollment.courseId);
+      console.log('Enrolled course IDs:', enrolledCourseIds);
+      setStudentEnrollments(enrolledCourseIds);
+    } catch (error) {
+      console.error('Error loading student enrollments:', error);
+      // Don't throw error, just set empty enrollments
+      setStudentEnrollments([]);
+    }
+  };
+
+  const handleEnrollInCourse = async (courseId: number) => {
+    if (!user?.id) return;
+    
+    // Debug: Check user information
+    console.log('Current user:', user);
+    console.log('User role:', user.role);
+    console.log('User ID:', user.id);
+    
+    // Check if user is actually a student
+    if (user.role !== 'STUDENT') {
+      alert('Only students can enroll in courses. Current user role: ' + user.role + '\n\nPlease log in as a student to enroll in courses.');
+      return;
+    }
+    
+    setEnrollingCourseId(courseId);
+    try {
+      console.log('Enrolling in course:', courseId, 'for user:', user.id);
+      const enrollmentData = {
+        studentId: user.id,
+        courseId: courseId
+      };
+      console.log('Enrollment data:', enrollmentData);
+      
+      await createEnrollment(enrollmentData);
+      console.log('Enrollment successful');
+      
+      // Refresh student enrollments
+      await loadStudentEnrollments();
+    } catch (error: any) {
+      console.error('Error enrolling in course:', error);
+      
+      // Check for specific error messages
+      if (error.response?.data?.message?.includes('Student not found')) {
+        console.log('Student record not found, attempting to create student profile...');
+        
+        // Try to create student profile
+        const profileCreated = await createStudentProfile();
+        
+        if (profileCreated) {
+          // Retry enrollment after creating profile
+          try {
+            console.log('Retrying enrollment after creating student profile...');
+            const enrollmentData = {
+              studentId: user.id,
+              courseId: courseId
+            };
+            
+            await createEnrollment(enrollmentData);
+            console.log('Enrollment successful after creating profile!');
+            
+            // Refresh student enrollments
+            await loadStudentEnrollments();
+            
+            alert('Student profile created and enrollment successful!');
+            return;
+          } catch (retryError: any) {
+            console.error('Error on retry enrollment:', retryError);
+            alert('Failed to enroll after creating student profile. Please try again.');
+          }
+        } else {
+          alert('❌ Student Profile Required\n\nYour user account exists but you need a student profile to enroll in courses.\n\nTo fix this:\n\n1. Logout and login as an ADMIN user\n2. Go to the Students page\n3. Create a new student with your email: ' + user.email + '\n4. Logout and login back as a student\n5. Try enrolling again\n\nOr contact your system administrator to create your student profile.');
+        }
+      } else if (error.response?.data?.message?.includes('already enrolled')) {
+        alert('You are already enrolled in this course.');
+      } else if (error.response?.data?.message?.includes('Course is full')) {
+        alert('This course is full. No available seats.');
+      } else if (error.response?.data?.message?.includes('not active')) {
+        alert('This course is not active for enrollment.');
+      } else {
+        alert('Failed to enroll in course. Please try again.');
+      }
+    } finally {
+      setEnrollingCourseId(null);
+    }
+  };
+
+  const handleDropCourse = async (courseId: number) => {
+    if (!user?.id) return;
+    
+    setDroppingCourseId(courseId);
+    try {
+      console.log('Dropping course:', courseId, 'for user:', user.id);
+      
+      // Get the student's enrollments to find the enrollment ID
+      const studentEnrollmentsData = await getStudentEnrollments(user.id);
+      let enrollmentsArray;
+      
+      // Handle different response structures
+      if (studentEnrollmentsData.data && Array.isArray(studentEnrollmentsData.data)) {
+        enrollmentsArray = studentEnrollmentsData.data;
+      } else if (Array.isArray(studentEnrollmentsData)) {
+        enrollmentsArray = studentEnrollmentsData;
+      } else if (studentEnrollmentsData.content && Array.isArray(studentEnrollmentsData.content)) {
+        enrollmentsArray = studentEnrollmentsData.content;
+      } else {
+        enrollmentsArray = [];
+      }
+      
+      // Find the enrollment for this course
+      const enrollment = enrollmentsArray.find((e: any) => e.courseId === courseId);
+      
+      if (enrollment) {
+        console.log('Found enrollment to drop:', enrollment.id);
+        await deleteEnrollment(enrollment.id);
+        console.log('Drop successful');
+        
+        // Refresh student enrollments
+        await loadStudentEnrollments();
+      } else {
+        console.warn('No enrollment found for course:', courseId);
+        alert('No enrollment found for this course.');
+      }
+    } catch (error) {
+      console.error('Error dropping course:', error);
+      alert('Failed to drop course. Please try again.');
+    } finally {
+      setDroppingCourseId(null);
+    }
+  };
+
+  const isEnrolledInCourse = (courseId: number) => {
+    return studentEnrollments.includes(courseId);
+  };
 
   // Memoize the loading state to prevent unnecessary re-renders
   const shouldShowSkeleton = coursesLoading && (!courses || courses.length === 0);
@@ -109,9 +401,6 @@ export default function Courses() {
     setIsFormOpen(false);
     setEditingCourse(null);
   };
-
-  const isAdmin = user?.role === 'ADMIN';
-  const isProfessor = user?.role === 'PROFESSOR';
 
   const filterOptions = [
     {
@@ -199,6 +488,18 @@ export default function Courses() {
                   <RefreshCw className={`w-5 h-5 mr-2 ${coursesLoading ? 'animate-spin' : ''}`} />
                   {coursesLoading ? 'Refreshing...' : 'Refresh'}
                 </button>
+                
+                {isStudent && (
+                  <button
+                    onClick={debugStudentStatus}
+                    className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                    aria-label="Check student status"
+                    title="Check if you have a student profile"
+                  >
+                    <UserCheck className="w-5 h-5 mr-2" />
+                    Check Student Status
+                  </button>
+                )}
                 
                 {(isAdmin || isProfessor) && (
                   <button 
@@ -321,14 +622,21 @@ export default function Courses() {
                     <div className="flex-1 space-y-3">
                       <div className="flex items-center justify-between">
                         <h3 className="text-xl font-semibold text-gray-900">{course.name}</h3>
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                          course.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
-                          course.status === 'INACTIVE' ? 'bg-red-100 text-red-800' :
-                          course.status === 'DRAFT' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {course.status}
-                        </span>
+                        <div className="flex space-x-2">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                            course.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+                            course.status === 'INACTIVE' ? 'bg-red-100 text-red-800' :
+                            course.status === 'DRAFT' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {course.status}
+                          </span>
+                          {isStudent && isEnrolledInCourse(course.id) && (
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                              Enrolled
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="flex space-x-4 text-sm text-gray-600">
                         <span><span className="font-semibold text-gray-700">Code:</span> {course.code}</span>
@@ -364,6 +672,35 @@ export default function Courses() {
                               title={`Delete course ${course.name}`}
                             >
                               Delete
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Student Enrollment Buttons */}
+                      {isStudent && course.status === 'ACTIVE' && (
+                        <div className="flex space-x-3 pt-2">
+                          {isEnrolledInCourse(course.id) ? (
+                            <button
+                              onClick={() => handleDropCourse(course.id)}
+                              disabled={droppingCourseId === course.id || enrollmentsLoading}
+                              className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-red-500 to-pink-600 text-white text-sm font-medium rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50"
+                              aria-label={`Drop course ${course.name}`}
+                              title={`Drop course ${course.name}`}
+                            >
+                              <UserMinus className="w-4 h-4 mr-2" />
+                              {droppingCourseId === course.id ? 'Dropping...' : 'Drop Course'}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleEnrollInCourse(course.id)}
+                              disabled={enrollingCourseId === course.id || enrollmentsLoading || course.currentEnrollment >= course.maxStudents}
+                              className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-sm font-medium rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50"
+                              aria-label={`Enroll in course ${course.name}`}
+                              title={`Enroll in course ${course.name}`}
+                            >
+                              <UserPlus className="w-4 h-4 mr-2" />
+                              {enrollingCourseId === course.id ? 'Enrolling...' : 'Enroll in Course'}
                             </button>
                           )}
                         </div>

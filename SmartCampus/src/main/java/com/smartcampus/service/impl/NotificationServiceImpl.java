@@ -978,7 +978,23 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public void cleanupOldNotifications(int daysToKeep) {
         LocalDateTime cutoffDate = LocalDateTime.now().minusDays(daysToKeep);
-        List<Notification> oldNotifications = notificationRepository.findByCreatedAtSince(cutoffDate);
-        notificationRepository.deleteAll(oldNotifications);
+        notificationRepository.deleteByCreatedAtBefore(cutoffDate);
+    }
+
+    @Override
+    public void deleteTestNotifications() {
+        // Delete notifications that match test patterns
+        // Look for common test messages and delete them
+        List<String> testMessages = List.of(
+            "Welcome to SmartCampus! This is your first notification.",
+            "Your course registration has been confirmed.",
+            "New assignment posted in Computer Science 101.",
+            "System maintenance scheduled for tomorrow at 2 AM.",
+            "Your profile has been updated successfully."
+        );
+        
+        for (String testMessage : testMessages) {
+            notificationRepository.deleteByMessageContaining(testMessage);
+        }
     }
 } 

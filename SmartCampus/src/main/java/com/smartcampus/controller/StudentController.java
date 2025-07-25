@@ -171,9 +171,19 @@ public class StudentController {
         )
     })
     public ResponseEntity<ApiResponse<StudentDTO>> createStudent(@Valid @RequestBody StudentDTO studentDTO) {
-        StudentDTO createdStudent = studentService.createStudent(studentDTO);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Student created successfully", createdStudent));
+        System.out.println("🔍 StudentController.createStudent - Received data: " + studentDTO);
+        System.out.println("🔍 StudentController.createStudent - Service type: " + studentService.getClass().getSimpleName());
+        try {
+            StudentDTO createdStudent = studentService.createStudent(studentDTO);
+            System.out.println("🔍 StudentController.createStudent - Success: " + createdStudent);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(ApiResponse.success("Student created successfully", createdStudent));
+        } catch (Exception e) {
+            System.err.println("🔍 StudentController.createStudent - Error: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Failed to create student: " + e.getMessage()));
+        }
     }
 
     @PutMapping("/{id}")

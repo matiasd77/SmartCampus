@@ -120,4 +120,5 @@ public interface NotificationService {
     void processRetryNotifications();
     void cleanupExpiredNotifications();
     void cleanupOldNotifications(int daysToKeep);
+    void deleteTestNotifications();
 } 

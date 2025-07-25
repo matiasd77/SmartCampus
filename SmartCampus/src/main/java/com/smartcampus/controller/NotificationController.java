@@ -526,6 +526,33 @@ public class NotificationController {
         }
     }
 
+    @DeleteMapping("/debug/cleanup-test-notifications")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+        summary = "Cleanup Test Notifications (Debug)",
+        description = "Delete all test notifications from the system (Admin only)"
+    )
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "200",
+            description = "Test notifications cleaned up successfully"
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "403",
+            description = "Forbidden - Admin access required"
+        )
+    })
+    public ResponseEntity<ApiResponse<String>> cleanupTestNotifications() {
+        try {
+            // Delete all notifications that match test patterns
+            notificationService.deleteTestNotifications();
+            return ResponseEntity.ok(ApiResponse.success("Test notifications cleaned up successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to cleanup test notifications: " + e.getMessage()));
+        }
+    }
+
     // Additional user-specific endpoints
     @GetMapping("/type/{type}")
     @Operation(

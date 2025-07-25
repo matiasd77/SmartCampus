@@ -2,6 +2,7 @@ import axios from 'axios';
 import { errorHandler } from '../utils/errorHandler';
 import { clearAuthData, getStoredToken, getUserRole, hasAnyRole } from '../utils/authUtils';
 import type { LoginRequest, LoginResponse, RegisterRequest, User } from '../types/auth';
+import type { NotificationsResponse } from '../types/dashboard';
 
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
@@ -538,8 +539,17 @@ export const dashboardAPI = {
     try {
       const response = await api.get('/students');
       console.log('dashboardAPI.getStudentsCount - Response:', response.data);
+      console.log('dashboardAPI.getStudentsCount - Response type:', typeof response.data);
+      console.log('dashboardAPI.getStudentsCount - Response keys:', Object.keys(response.data));
+      
       const students = response.data.data || response.data;
-      return { count: Array.isArray(students) ? students.length : 0 };
+      console.log('dashboardAPI.getStudentsCount - Students data:', students);
+      console.log('dashboardAPI.getStudentsCount - Students is array:', Array.isArray(students));
+      console.log('dashboardAPI.getStudentsCount - Students length:', Array.isArray(students) ? students.length : 'not array');
+      
+      const count = Array.isArray(students) ? students.length : 0;
+      console.log('dashboardAPI.getStudentsCount - Final count:', count);
+      return { count };
     } catch (error) {
       console.error('dashboardAPI.getStudentsCount - Error:', error);
       return { count: 0 };
@@ -557,8 +567,36 @@ export const dashboardAPI = {
     try {
       const response = await api.get('/professors');
       console.log('dashboardAPI.getProfessorsCount - Response:', response.data);
-      const professors = response.data.data || response.data;
-      return { count: Array.isArray(professors) ? professors.length : 0 };
+      console.log('dashboardAPI.getProfessorsCount - Response type:', typeof response.data);
+      console.log('dashboardAPI.getProfessorsCount - Response keys:', Object.keys(response.data));
+      console.log('dashboardAPI.getProfessorsCount - Full response structure:', JSON.stringify(response.data, null, 2));
+      
+      // Handle different response structures
+      let professors;
+      if (response.data.data) {
+        // Check if it's a paginated response
+        if (response.data.data.content && Array.isArray(response.data.data.content)) {
+          professors = response.data.data.content;
+        } else if (Array.isArray(response.data.data)) {
+          professors = response.data.data;
+        } else {
+          professors = response.data.data;
+        }
+      } else if (Array.isArray(response.data)) {
+        professors = response.data;
+      } else if (response.data.content) {
+        professors = response.data.content;
+      } else {
+        professors = response.data;
+      }
+      
+      console.log('dashboardAPI.getProfessorsCount - Professors data:', professors);
+      console.log('dashboardAPI.getProfessorsCount - Professors is array:', Array.isArray(professors));
+      console.log('dashboardAPI.getProfessorsCount - Professors length:', Array.isArray(professors) ? professors.length : 'not array');
+      
+      const count = Array.isArray(professors) ? professors.length : 0;
+      console.log('dashboardAPI.getProfessorsCount - Final count:', count);
+      return { count };
     } catch (error) {
       console.error('dashboardAPI.getProfessorsCount - Error:', error);
       return { count: 0 };
@@ -570,7 +608,29 @@ export const dashboardAPI = {
     try {
       const response = await api.get('/announcements/stats/count/active');
       console.log('dashboardAPI.getAnnouncementsCount - Response:', response.data);
+      console.log('dashboardAPI.getAnnouncementsCount - Response type:', typeof response.data);
+      console.log('dashboardAPI.getAnnouncementsCount - Response keys:', Object.keys(response.data));
+      console.log('dashboardAPI.getAnnouncementsCount - Response.data:', response.data.data);
+      console.log('dashboardAPI.getAnnouncementsCount - Response.data type:', typeof response.data.data);
+      
       const count = response.data.data || 0;
+      console.log('dashboardAPI.getAnnouncementsCount - Final count:', count);
+      
+      // If count is 0 but we know there are announcements, try getting all announcements
+      if (count === 0) {
+        console.log('dashboardAPI.getAnnouncementsCount - Count is 0, trying to get all announcements...');
+        try {
+          const allAnnouncementsResponse = await api.get('/announcements');
+          console.log('dashboardAPI.getAnnouncementsCount - All announcements response:', allAnnouncementsResponse.data);
+          const allAnnouncements = allAnnouncementsResponse.data.data || allAnnouncementsResponse.data;
+          const totalCount = Array.isArray(allAnnouncements) ? allAnnouncements.length : 0;
+          console.log('dashboardAPI.getAnnouncementsCount - Total announcements count:', totalCount);
+          return { count: totalCount };
+        } catch (error) {
+          console.error('dashboardAPI.getAnnouncementsCount - Error getting all announcements:', error);
+        }
+      }
+      
       return { count };
     } catch (error) {
       console.error('dashboardAPI.getAnnouncementsCount - Error:', error);
@@ -583,7 +643,11 @@ export const dashboardAPI = {
     try {
       const response = await api.get('/notifications/unread/count');
       console.log('dashboardAPI.getNotificationsCount - Response:', response.data);
+      console.log('dashboardAPI.getNotificationsCount - Response type:', typeof response.data);
+      console.log('dashboardAPI.getNotificationsCount - Response keys:', Object.keys(response.data));
+      
       const count = response.data.data || 0;
+      console.log('dashboardAPI.getNotificationsCount - Final count:', count);
       return { count };
     } catch (error) {
       console.error('dashboardAPI.getNotificationsCount - Error:', error);
@@ -753,10 +817,16 @@ export const enrollmentsAPI = {
     courseId: number;
   }) => {
     try {
+      console.log('enrollmentsAPI.createEnrollment - Request data:', enrollmentData);
       const response = await api.post('/enrollments', enrollmentData);
+      console.log('enrollmentsAPI.createEnrollment - Success response:', response.data);
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('enrollmentsAPI.createEnrollment - Error:', error);
+      console.error('enrollmentsAPI.createEnrollment - Error response:', error.response);
+      console.error('enrollmentsAPI.createEnrollment - Error data:', error.response?.data);
+      console.error('enrollmentsAPI.createEnrollment - Error status:', error.response?.status);
+      console.error('enrollmentsAPI.createEnrollment - Error message:', error.response?.data?.message);
       throw error;
     }
   },
@@ -1014,11 +1084,57 @@ export const announcementsAPI = {
   getAnnouncements: async (page = 0, size = 10) => {
     try {
       console.log('announcementsAPI.getAnnouncements: Making request with page:', page, 'size:', size);
-      const response = await api.get('/announcements/paginated', { 
-        params: { page, size } 
-      });
-      console.log('announcementsAPI.getAnnouncements: Response received:', response.data);
-      return response.data;
+      
+      // Try the recent endpoint first since we know it works
+      try {
+        const response = await api.get('/announcements/recent');
+        console.log('announcementsAPI.getAnnouncements: Recent response received:', response.data);
+        
+        // Convert the recent response to match the expected paginated format
+        const announcements = response.data.data || response.data;
+        return {
+          content: announcements,
+          totalElements: announcements.length,
+          totalPages: 1,
+          size: announcements.length,
+          number: 0,
+          first: true,
+          last: true,
+          numberOfElements: announcements.length
+        };
+      } catch (recentError) {
+        console.log('announcementsAPI.getAnnouncements: Recent endpoint failed, trying paginated...');
+        
+        // Try the paginated endpoint
+        try {
+          const response = await api.get('/announcements/paginated', { 
+            params: { page, size } 
+          });
+          console.log('announcementsAPI.getAnnouncements: Paginated response received:', response.data);
+          return response.data;
+        } catch (paginatedError) {
+          console.log('announcementsAPI.getAnnouncements: Paginated endpoint failed, trying regular endpoint...');
+          
+          // Fallback to regular announcements endpoint
+          const response = await api.get('/announcements', { 
+            params: { page, size } 
+          });
+          console.log('announcementsAPI.getAnnouncements: Regular response received:', response.data);
+          
+          // Convert regular response to paginated format
+          const announcements = response.data.data || response.data;
+          return {
+            content: announcements,
+            totalElements: announcements.length,
+            totalPages: 1,
+            size: announcements.length,
+            number: 0,
+            first: true,
+            last: true,
+            numberOfElements: announcements.length
+          };
+        }
+      }
     } catch (error) {
       console.error('announcementsAPI.getAnnouncements - Error:', error);
       throw error;
@@ -1142,21 +1258,62 @@ export const announcementsAPI = {
 
 // Notifications API calls
 export const notificationsAPI = {
-  getNotifications: async (page = 0, size = 10, filters?: {
-    status?: string;
-    priority?: string;
-    type?: string;
-    read?: boolean;
-  }) => {
+  getNotifications: async (page = 0, size = 10, filters: any = {}): Promise<NotificationsResponse> => {
     try {
-      console.log('notificationsAPI.getNotifications: Making request with page:', page, 'size:', size, 'filters:', filters);
-      const response = await api.get('/notifications/paginated', { 
-        params: { page, size, ...filters } 
+      console.log('notificationsAPI.getNotifications - Request params:', { page, size, filters });
+      
+      // Check if user is admin to determine endpoint
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          const isAdmin = payload.authorities && payload.authorities.some((auth: string) => auth.includes('ADMIN'));
+          
+          if (isAdmin) {
+            console.log('notificationsAPI.getNotifications - Using admin endpoint');
+            // For admin, get all notifications
+            const response = await api.get('/notifications/admin/all');
+            console.log('notificationsAPI.getNotifications - Admin response:', response.data);
+            
+            // Convert to paginated format
+            const allNotifications = response.data.data || [];
+            const startIndex = page * size;
+            const endIndex = startIndex + size;
+            const paginatedNotifications = allNotifications.slice(startIndex, endIndex);
+            
+            return {
+              content: paginatedNotifications,
+              totalElements: allNotifications.length,
+              totalPages: Math.ceil(allNotifications.length / size),
+              size: size,
+              number: page,
+              first: page === 0,
+              last: endIndex >= allNotifications.length,
+              numberOfElements: paginatedNotifications.length
+            };
+          }
+        } catch (e) {
+          console.error('Error parsing token:', e);
+        }
+      }
+      
+      // For regular users, use paginated endpoint
+      console.log('notificationsAPI.getNotifications - Using regular user endpoint');
+      const params = new URLSearchParams({
+        page: page.toString(),
+        size: size.toString(),
+        ...filters
       });
-      console.log('notificationsAPI.getNotifications: Response received:', response.data);
+      
+      const response = await api.get(`/notifications/paginated?${params}`);
+      console.log('notificationsAPI.getNotifications - Response:', response.data);
+      console.log('notificationsAPI.getNotifications - Content:', response.data.content);
+      console.log('notificationsAPI.getNotifications - Content length:', response.data.content?.length);
+      
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('notificationsAPI.getNotifications - Error:', error);
+      console.error('notificationsAPI.getNotifications - Error response:', error.response?.data);
       throw error;
     }
   },
@@ -1267,12 +1424,22 @@ export const studentsAPI = {
     year?: string;
   }) => {
     try {
-      console.log('studentsAPI.getStudents: Making request with filters:', filters);
+      console.log('🔍 studentsAPI.getStudents: Making request with filters:', filters);
       const response = await api.get('/students', { params: filters });
-      console.log('studentsAPI.getStudents: Response received:', response.data);
+      console.log('🔍 studentsAPI.getStudents: Response received:', response.data);
+      console.log('🔍 studentsAPI.getStudents: Response status:', response.status);
+      console.log('🔍 studentsAPI.getStudents: Response structure:', {
+        success: response.data?.success,
+        message: response.data?.message,
+        hasData: !!response.data?.data,
+        dataType: typeof response.data?.data,
+        dataLength: Array.isArray(response.data?.data) ? response.data.data.length : 'not array'
+      });
       return response.data;
-    } catch (error) {
-      console.error('studentsAPI.getStudents - Error:', error);
+    } catch (error: any) {
+      console.error('🔍 studentsAPI.getStudents - Error:', error);
+      console.error('🔍 studentsAPI.getStudents - Error response:', error.response?.data);
+      console.error('🔍 studentsAPI.getStudents - Error status:', error.response?.status);
       throw error;
     }
   },
@@ -1298,10 +1465,17 @@ export const studentsAPI = {
     userId: number;
   }) => {
     try {
+      console.log('🔍 studentsAPI.createStudent - Sending data:', JSON.stringify(studentData, null, 2));
+      console.log('🔍 studentsAPI.createStudent - Data type:', typeof studentData);
+      console.log('🔍 studentsAPI.createStudent - Data keys:', Object.keys(studentData));
       const response = await api.post('/students', studentData);
+      console.log('🔍 studentsAPI.createStudent - Response:', response.data);
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('studentsAPI.createStudent - Error:', error);
+      console.error('studentsAPI.createStudent - Error response:', error.response?.data);
+      console.error('studentsAPI.createStudent - Error status:', error.response?.status);
+      console.error('studentsAPI.createStudent - Error message:', error.response?.data?.message);
       throw error;
     }
   },
@@ -1401,14 +1575,21 @@ export const professorsAPI = {
     lastName: string;
     email: string;
     department: string;
-    rank: string;
+    academicRank: string;
     status: string;
+    phoneNumber?: string;
+    officeLocation?: string;
+    bio?: string;
+    userId?: number;
   }) => {
     try {
+      console.log('🔍 professorsAPI.createProfessor - Sending data:', professorData);
       const response = await api.post('/professors', professorData);
+      console.log('🔍 professorsAPI.createProfessor - Response:', response.data);
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('professorsAPI.createProfessor - Error:', error);
+      console.error('professorsAPI.createProfessor - Error response:', error.response?.data);
       throw error;
     }
   },
@@ -1418,8 +1599,12 @@ export const professorsAPI = {
     lastName?: string;
     email?: string;
     department?: string;
-    rank?: string;
+    academicRank?: string;
     status?: string;
+    phoneNumber?: string;
+    officeLocation?: string;
+    bio?: string;
+    userId?: number;
   }) => {
     try {
       const response = await api.put(`/professors/${id}`, professorData);
@@ -1471,6 +1656,63 @@ export const professorsAPI = {
   },
 };
 
+// Users API endpoints
+export const usersAPI = {
+  getAllUsers: async () => {
+    try {
+      const response = await api.get('/admin/users');
+      return response.data;
+    } catch (error) {
+      console.error('usersAPI.getAllUsers - Error:', error);
+      throw error;
+    }
+  },
+  
+  getUserById: async (id: number) => {
+    try {
+      const response = await api.get(`/users/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('usersAPI.getUserById - Error:', error);
+      throw error;
+    }
+  },
+  
+  updateUser: async (id: number, userData: {
+    name?: string;
+    email?: string;
+    role?: string;
+    isActive?: boolean;
+    phoneNumber?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+    bio?: string;
+    department?: string;
+    position?: string;
+  }) => {
+    try {
+      const response = await api.put(`/users/${id}`, userData);
+      return response.data;
+    } catch (error) {
+      console.error('usersAPI.updateUser - Error:', error);
+      throw error;
+    }
+  },
+  
+  deleteUser: async (id: number) => {
+    try {
+      const response = await api.delete(`/admin/users/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('usersAPI.deleteUser - Error:', error);
+      throw error;
+    }
+  },
+};
+
 // Admin API endpoints
 export const adminAPI = {
   getAllUsers: async () => {
@@ -1483,12 +1725,12 @@ export const adminAPI = {
     }
   },
   
-  deleteUser: async (id: number) => {
+  debugDatabase: async () => {
     try {
-      const response = await api.delete(`/admin/users/${id}`);
+      const response = await api.get('/admin/debug/database');
       return response.data;
     } catch (error) {
-      console.error('adminAPI.deleteUser - Error:', error);
+      console.error('adminAPI.debugDatabase - Error:', error);
       throw error;
     }
   },

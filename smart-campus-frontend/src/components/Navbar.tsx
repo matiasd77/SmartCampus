@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { getUserDisplayName } from '../utils/userUtils';
+import { getUserDisplayName, getCompactDisplayName } from '../utils/userUtils';
 import { 
   Home, 
   Megaphone, 
@@ -187,8 +187,11 @@ export const Navbar: React.FC<NavbarProps> = ({ showDashboardLink = true }) => {
           {/* Right Side - User Info and Profile */}
           <div className="flex items-center space-x-4">
             {/* Welcome Message */}
-            <span className="hidden xl:block text-sm font-medium text-gray-700 bg-gray-100 px-3 py-2 rounded-lg">
-              Welcome, {getUserDisplayName(user)}
+            <span 
+              className="hidden 2xl:block text-sm font-medium text-gray-700 bg-gray-100 px-3 py-2 rounded-lg max-w-24 truncate"
+              title={`Welcome, ${getUserDisplayName(user)}`}
+            >
+              {getCompactDisplayName(user)}
             </span>
 
             {/* Mobile menu button */}
@@ -212,7 +215,12 @@ export const Navbar: React.FC<NavbarProps> = ({ showDashboardLink = true }) => {
                 <div className="w-10 h-10 bg-gradient-to-br from-indigo-100 to-indigo-200 rounded-xl flex items-center justify-center shadow-md">
                   <User className="w-5 h-5 text-indigo-600" />
                 </div>
-                <span className="hidden md:block text-sm font-medium">{getUserDisplayName(user)}</span>
+                <span 
+                  className="hidden lg:block text-sm font-medium max-w-20 truncate"
+                  title={getUserDisplayName(user)}
+                >
+                  {getCompactDisplayName(user)}
+                </span>
               </button>
 
               {/* Profile Dropdown */}

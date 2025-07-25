@@ -61,8 +61,12 @@ export interface ProfessorRequest {
   lastName: string;
   email: string;
   department: string;
-  rank: string;
+  academicRank: string;
   status: string;
+  phoneNumber?: string;
+  officeLocation?: string;
+  bio?: string;
+  userId?: number;
 }
 
 // Course Types
@@ -205,6 +209,8 @@ export interface Notification {
   title: string;
   message: string;
   userId: number;
+  userName?: string;
+  userEmail?: string;
   type: string;
   priority: string;
   status: string;
@@ -518,9 +524,12 @@ export const PROFESSOR_STATUSES = [
 export const PROFESSOR_RANKS = [
   { value: 'ASSISTANT_PROFESSOR', label: 'Assistant Professor', color: 'text-blue-600', bgColor: 'bg-blue-100' },
   { value: 'ASSOCIATE_PROFESSOR', label: 'Associate Professor', color: 'text-green-600', bgColor: 'bg-green-100' },
-  { value: 'PROFESSOR', label: 'Professor', color: 'text-purple-600', bgColor: 'bg-purple-100' },
+  { value: 'FULL_PROFESSOR', label: 'Full Professor', color: 'text-purple-600', bgColor: 'bg-purple-100' },
   { value: 'DISTINGUISHED_PROFESSOR', label: 'Distinguished Professor', color: 'text-red-600', bgColor: 'bg-red-100' },
   { value: 'EMERITUS_PROFESSOR', label: 'Emeritus Professor', color: 'text-gray-600', bgColor: 'bg-gray-100' },
+  { value: 'LECTURER', label: 'Lecturer', color: 'text-indigo-600', bgColor: 'bg-indigo-100' },
+  { value: 'SENIOR_LECTURER', label: 'Senior Lecturer', color: 'text-teal-600', bgColor: 'bg-teal-100' },
+  { value: 'PRINCIPAL_LECTURER', label: 'Principal Lecturer', color: 'text-orange-600', bgColor: 'bg-orange-100' },
 ];
 
 export const COURSE_STATUSES = [
@@ -584,11 +593,35 @@ export const ANNOUNCEMENT_STATUSES = [
 
 export const NOTIFICATION_TYPES = [
   { value: 'GENERAL', label: 'General', color: 'text-blue-600', bgColor: 'bg-blue-100', icon: '📢' },
-  { value: 'COURSE', label: 'Course', color: 'text-green-600', bgColor: 'bg-green-100', icon: '📚' },
-  { value: 'GRADE', label: 'Grade', color: 'text-yellow-600', bgColor: 'bg-yellow-100', icon: '📊' },
-  { value: 'ATTENDANCE', label: 'Attendance', color: 'text-purple-600', bgColor: 'bg-purple-100', icon: '📋' },
-  { value: 'DEADLINE', label: 'Deadline', color: 'text-red-600', bgColor: 'bg-red-100', icon: '⏰' },
-  { value: 'REMINDER', label: 'Reminder', color: 'text-orange-600', bgColor: 'bg-orange-100', icon: '🔔' },
+  { value: 'COURSE_UPDATE', label: 'Course Update', color: 'text-green-600', bgColor: 'bg-green-100', icon: '📚' },
+  { value: 'GRADE_UPDATE', label: 'Grade Update', color: 'text-yellow-600', bgColor: 'bg-yellow-100', icon: '📊' },
+  { value: 'ATTENDANCE_ALERT', label: 'Attendance Alert', color: 'text-purple-600', bgColor: 'bg-purple-100', icon: '📋' },
+  { value: 'ANNOUNCEMENT', label: 'Announcement', color: 'text-indigo-600', bgColor: 'bg-indigo-100', icon: '📢' },
+  { value: 'ASSIGNMENT_DUE', label: 'Assignment Due', color: 'text-red-600', bgColor: 'bg-red-100', icon: '⏰' },
+  { value: 'EXAM_REMINDER', label: 'Exam Reminder', color: 'text-orange-600', bgColor: 'bg-orange-100', icon: '📝' },
+  { value: 'SYSTEM_MAINTENANCE', label: 'System Maintenance', color: 'text-gray-600', bgColor: 'bg-gray-100', icon: '🔧' },
+  { value: 'SECURITY_ALERT', label: 'Security Alert', color: 'text-red-600', bgColor: 'bg-red-100', icon: '🔒' },
+  { value: 'WELCOME', label: 'Welcome', color: 'text-green-600', bgColor: 'bg-green-100', icon: '👋' },
+  { value: 'ACCOUNT_UPDATE', label: 'Account Update', color: 'text-blue-600', bgColor: 'bg-blue-100', icon: '👤' },
+  { value: 'PASSWORD_RESET', label: 'Password Reset', color: 'text-yellow-600', bgColor: 'bg-yellow-100', icon: '🔑' },
+  { value: 'EMAIL_VERIFICATION', label: 'Email Verification', color: 'text-blue-600', bgColor: 'bg-blue-100', icon: '✉️' },
+  { value: 'COURSE_ENROLLMENT', label: 'Course Enrollment', color: 'text-green-600', bgColor: 'bg-green-100', icon: '📝' },
+  { value: 'COURSE_DROP', label: 'Course Drop', color: 'text-red-600', bgColor: 'bg-red-100', icon: '❌' },
+  { value: 'PROFESSOR_ASSIGNMENT', label: 'Professor Assignment', color: 'text-purple-600', bgColor: 'bg-purple-100', icon: '👨‍🏫' },
+  { value: 'STUDENT_REGISTRATION', label: 'Student Registration', color: 'text-green-600', bgColor: 'bg-green-100', icon: '🎓' },
+  { value: 'PAYMENT_REMINDER', label: 'Payment Reminder', color: 'text-yellow-600', bgColor: 'bg-yellow-100', icon: '💰' },
+  { value: 'LIBRARY_DUE', label: 'Library Due', color: 'text-orange-600', bgColor: 'bg-orange-100', icon: '📚' },
+  { value: 'EVENT_REMINDER', label: 'Event Reminder', color: 'text-blue-600', bgColor: 'bg-blue-100', icon: '📅' },
+  { value: 'MEETING_SCHEDULE', label: 'Meeting Schedule', color: 'text-indigo-600', bgColor: 'bg-indigo-100', icon: '🤝' },
+  { value: 'FEEDBACK_REQUEST', label: 'Feedback Request', color: 'text-purple-600', bgColor: 'bg-purple-100', icon: '💬' },
+  { value: 'SURVEY_INVITATION', label: 'Survey Invitation', color: 'text-green-600', bgColor: 'bg-green-100', icon: '📊' },
+  { value: 'CERTIFICATE_READY', label: 'Certificate Ready', color: 'text-green-600', bgColor: 'bg-green-100', icon: '🏆' },
+  { value: 'GRADUATION_REMINDER', label: 'Graduation Reminder', color: 'text-purple-600', bgColor: 'bg-purple-100', icon: '🎓' },
+  { value: 'INTERNSHIP_OPPORTUNITY', label: 'Internship Opportunity', color: 'text-blue-600', bgColor: 'bg-blue-100', icon: '💼' },
+  { value: 'JOB_ANNOUNCEMENT', label: 'Job Announcement', color: 'text-green-600', bgColor: 'bg-green-100', icon: '💼' },
+  { value: 'SCHOLARSHIP_DEADLINE', label: 'Scholarship Deadline', color: 'text-red-600', bgColor: 'bg-red-100', icon: '🎓' },
+  { value: 'RESEARCH_OPPORTUNITY', label: 'Research Opportunity', color: 'text-indigo-600', bgColor: 'bg-indigo-100', icon: '🔬' },
+  { value: 'CONFERENCE_INVITATION', label: 'Conference Invitation', color: 'text-purple-600', bgColor: 'bg-purple-100', icon: '🎤' },
 ];
 
 export const NOTIFICATION_STATUSES = [
@@ -599,8 +632,10 @@ export const NOTIFICATION_STATUSES = [
 
 export const NOTIFICATION_PRIORITIES = [
   { value: 'LOW', label: 'Low', color: 'text-gray-600', bgColor: 'bg-gray-100' },
-  { value: 'MEDIUM', label: 'Medium', color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
-  { value: 'HIGH', label: 'High', color: 'text-red-600', bgColor: 'bg-red-100' },
+  { value: 'NORMAL', label: 'Normal', color: 'text-blue-600', bgColor: 'bg-blue-100' },
+  { value: 'HIGH', label: 'High', color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
+  { value: 'URGENT', label: 'Urgent', color: 'text-orange-600', bgColor: 'bg-orange-100' },
+  { value: 'CRITICAL', label: 'Critical', color: 'text-red-600', bgColor: 'bg-red-100' },
 ];
 
 export const USER_ROLES = [

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAnnouncements } from '../hooks/useAnnouncements';
 import { AnnouncementCard } from '../components/AnnouncementCard';
@@ -109,6 +109,52 @@ export default function Announcements() {
   // Debug logging for announcements data
   console.log('Announcements component - announcements data:', announcements);
   console.log('Announcements component - announcements length:', announcements?.length);
+  console.log('Announcements component - isLoading:', isLoading);
+  console.log('Announcements component - error:', error);
+  console.log('Announcements component - totalElements:', totalElements);
+  console.log('Announcements component - currentPage:', currentPage);
+  console.log('Announcements component - totalPages:', totalPages);
+  
+  // Fallback: If no announcements but we know they exist, try to fetch them directly
+  const [fallbackAnnouncements, setFallbackAnnouncements] = useState<Announcement[]>([]);
+  const [hasTriedFallback, setHasTriedFallback] = useState(false);
+  
+  useEffect(() => {
+    if (!isLoading && (!announcements || announcements.length === 0) && !error && !hasTriedFallback) {
+      console.log('Announcements component - Trying fallback fetch...');
+      setHasTriedFallback(true);
+      
+      // Try to fetch announcements directly from the API
+      const fetchFallbackAnnouncements = async () => {
+        try {
+          const response = await fetch('/api/announcements', {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('Announcements component - Fallback response:', data);
+            
+            if (data.data && Array.isArray(data.data)) {
+              setFallbackAnnouncements(data.data);
+            } else if (Array.isArray(data)) {
+              setFallbackAnnouncements(data);
+            }
+          }
+        } catch (err) {
+          console.error('Announcements component - Fallback fetch error:', err);
+        }
+      };
+      
+      fetchFallbackAnnouncements();
+    }
+  }, [isLoading, announcements, error, hasTriedFallback]);
+  
+  // Use fallback announcements if main announcements are empty
+  const displayAnnouncements = (announcements && announcements.length > 0) ? announcements : fallbackAnnouncements;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -266,7 +312,7 @@ export default function Announcements() {
         )}
 
         {/* Empty State */}
-        {!isLoading && (announcements ?? []).length === 0 && !error && (
+        {!isLoading && (!announcements || announcements.length === 0) && !error && (
           <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-12 text-center">
             <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
               <Megaphone className="w-10 h-10 text-gray-400" />
@@ -287,19 +333,117 @@ export default function Announcements() {
           </div>
         )}
 
-        {/* Announcements List */}
-        {!isLoading && (announcements ?? []).length > 0 && (
-          <div className="space-y-6 mb-8">
-            {(announcements ?? []).map((announcement) => (
-              <AnnouncementCard
-                key={announcement.id}
-                announcement={announcement}
-                onView={handleViewAnnouncement}
-                onEdit={isAdmin ? handleEditAnnouncement : undefined}
-                onDelete={isAdmin ? handleDeleteAnnouncement : undefined}
-                showActions={isAdmin}
-              />
-            ))}
+        {/* Announcements Table */}
+        {!isLoading && announcements && announcements.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden mb-8">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gradient-to-r from-gray-50 to-slate-50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Announcement
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Posted By
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Priority
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Date
+                    </th>
+                    {isAdmin && (
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {(announcements ?? []).map((announcement) => (
+                    <tr key={announcement.id} className="hover:bg-gray-50 transition-colors duration-200">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0 mr-4">
+                            <Megaphone className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900 cursor-pointer hover:text-blue-600" onClick={() => handleViewAnnouncement(announcement)}>
+                              {announcement.title}
+                            </div>
+                            <div className="text-sm text-gray-500 max-w-xs truncate">
+                              {announcement.content}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {announcement.postedBy ? `${announcement.postedBy.firstName} ${announcement.postedBy.lastName}` : announcement.postedByName || 'System'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                          announcement.priority === 'HIGH' || announcement.priority === 'URGENT'
+                            ? 'bg-red-100 text-red-800'
+                            : announcement.priority === 'MEDIUM'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {announcement.priority}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {announcement.type}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                          announcement.status === 'ACTIVE'
+                            ? 'bg-green-100 text-green-800'
+                            : announcement.status === 'INACTIVE'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {announcement.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {new Date(announcement.createdAt).toLocaleDateString()}
+                      </td>
+                      {isAdmin && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleViewAnnouncement(announcement)}
+                              className="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-xs font-medium rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105"
+                            >
+                              View
+                            </button>
+                            <button
+                              onClick={() => handleEditAnnouncement(announcement)}
+                              className="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs font-medium rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteAnnouncement(announcement.id)}
+                              disabled={isDeleting}
+                              className="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-red-500 to-pink-600 text-white text-xs font-medium rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

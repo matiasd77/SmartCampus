@@ -3,9 +3,12 @@ package com.smartcampus.service.impl;
 import com.smartcampus.dto.ProfessorDTO;
 import com.smartcampus.entity.Professor;
 import com.smartcampus.entity.ProfessorStatus;
+import com.smartcampus.entity.User;
+import com.smartcampus.entity.AcademicRank;
 import com.smartcampus.exception.ProfessorNotFoundException;
 import com.smartcampus.mapper.ProfessorMapper;
 import com.smartcampus.repository.ProfessorRepository;
+import com.smartcampus.repository.UserRepository;
 import com.smartcampus.service.ProfessorService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,6 +26,7 @@ public class ProfessorServiceImpl implements ProfessorService {
 
     private final ProfessorRepository professorRepository;
     private final ProfessorMapper professorMapper;
+    private final UserRepository userRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -64,24 +68,56 @@ public class ProfessorServiceImpl implements ProfessorService {
 
     @Override
     public ProfessorDTO createProfessor(ProfessorDTO professorDTO) {
+        System.out.println("🔍 ProfessorServiceImpl.createProfessor - Starting with data: " + professorDTO);
+        
         // Check if email already exists
         if (professorRepository.existsByEmail(professorDTO.getEmail())) {
+            System.err.println("🔍 ProfessorServiceImpl.createProfessor - Email already exists: " + professorDTO.getEmail());
             throw new RuntimeException("Email is already taken by another professor");
         }
 
         Professor professor = professorMapper.toEntity(professorDTO);
+        System.out.println("🔍 ProfessorServiceImpl.createProfessor - Mapped to entity: " + professor);
+        
+        // Handle userId - fetch the user and set it in the professor entity
+        if (professorDTO.getUserId() != null) {
+            try {
+                System.out.println("🔍 ProfessorServiceImpl.createProfessor - Fetching user with ID: " + professorDTO.getUserId());
+                User user = userRepository.findById(professorDTO.getUserId())
+                        .orElseThrow(() -> new RuntimeException("User with ID " + professorDTO.getUserId() + " not found"));
+                professor.setUser(user);
+                System.out.println("🔍 ProfessorServiceImpl.createProfessor - User found and set: " + user);
+            } catch (Exception e) {
+                System.err.println("🔍 ProfessorServiceImpl.createProfessor - Error fetching user: " + e.getMessage());
+                throw new RuntimeException("User with ID " + professorDTO.getUserId() + " not found: " + e.getMessage());
+            }
+        } else {
+            System.out.println("🔍 ProfessorServiceImpl.createProfessor - No userId provided");
+        }
         
         // Set default status if not provided
         if (professor.getStatus() == null) {
             professor.setStatus(ProfessorStatus.ACTIVE);
+            System.out.println("🔍 ProfessorServiceImpl.createProfessor - Set default status: ACTIVE");
+        }
+        
+        // Set default academic rank if not provided
+        if (professor.getAcademicRank() == null) {
+            professor.setAcademicRank(AcademicRank.ASSISTANT_PROFESSOR);
+            System.out.println("🔍 ProfessorServiceImpl.createProfessor - Set default academic rank: ASSISTANT_PROFESSOR");
         }
         
         // Set audit fields
         professor.setCreatedAt(LocalDateTime.now());
         professor.setUpdatedAt(LocalDateTime.now());
         
+        System.out.println("🔍 ProfessorServiceImpl.createProfessor - About to save professor: " + professor);
         Professor savedProfessor = professorRepository.save(professor);
-        return professorMapper.toDto(savedProfessor);
+        System.out.println("🔍 ProfessorServiceImpl.createProfessor - Professor saved successfully: " + savedProfessor);
+        
+        ProfessorDTO result = professorMapper.toDto(savedProfessor);
+        System.out.println("🔍 ProfessorServiceImpl.createProfessor - Returning DTO: " + result);
+        return result;
     }
 
     @Override

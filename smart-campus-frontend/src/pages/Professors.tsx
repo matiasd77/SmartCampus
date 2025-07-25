@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useProfessors } from '../hooks/useProfessors';
+import { useUsers } from '../hooks/useUsers';
 import { ProfessorCard } from '../components/ProfessorCard';
 import { Pagination } from '../components/Pagination';
 import { PROFESSOR_STATUSES, PROFESSOR_RANKS } from '../types/dashboard';
-import type { Professor, ProfessorFilters } from '../types/dashboard';
+import type { Professor, ProfessorFilters, ProfessorRequest } from '../types/dashboard';
 import { Navbar } from '../components/Navbar';
 import { 
   RefreshCw, 
@@ -15,6 +16,7 @@ import {
   Calendar,
   User
 } from 'lucide-react';
+import { ProfessorForm } from '../components/ProfessorForm';
 
 export default function Professors() {
   const { user } = useAuth();
@@ -33,20 +35,41 @@ export default function Professors() {
     handleFiltersChange: updateFilters,
     clearFilters,
     deleteProfessor,
+    createProfessor,
     refresh,
   } = useProfessors();
 
+  // Add users hook for admin functionality
+  const { users: allUsers, isLoading: usersLoading, error: usersError, refetch: refetchUsers } = useUsers();
+
   const [searchValue, setSearchValue] = useState('');
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingProfessor, setEditingProfessor] = useState<Professor | undefined>();
+
+  // Filter users to show only professors for stats
+  const professorUsers = allUsers?.filter(user => user.role === 'PROFESSOR') || [];
+  const totalProfessors = professors.length; // Use professors from useProfessors hook
+  const activeProfessors = professors.filter(p => p.status === 'ACTIVE').length;
+  const fullProfessors = professors.filter(p => p.rank === 'FULL_PROFESSOR').length;
 
   // Add debugging
   console.log('Professors component render:', {
     professors: professors?.length || 0,
     isLoading,
     error,
-    currentPage,
-    totalPages,
+    allUsers: allUsers?.length || 0,
+    professorUsers: professorUsers.length,
+    usersLoading,
+    usersError,
     user: user?.role
   });
+
+  // Auto-test endpoints when component mounts
+  useEffect(() => {
+    console.log('🔍 Professors page mounted - testing endpoints...');
+    // testProfessorsEndpoint(); // This line was removed as per the edit hint
+    // testAllProfessorsEndpoint(); // This line was removed as per the edit hint
+  }, []);
 
   const handleSearchChange = (value: string) => {
     setSearchValue(value);
@@ -85,8 +108,40 @@ export default function Professors() {
   };
 
   const handleCreateProfessor = () => {
-    // TODO: Navigate to create page or open create modal
-    console.log('Create new professor');
+    console.log('🔍 handleCreateProfessor called');
+    console.log('🔍 isFormOpen before:', isFormOpen);
+    console.log('🔍 editingProfessor:', editingProfessor);
+    
+    setEditingProfessor(undefined);
+    setIsFormOpen(true);
+    
+    console.log('🔍 isFormOpen after:', true);
+    console.log('🔍 ProfessorForm should now be rendered');
+  };
+
+  const handleFormSubmit = async (professor: ProfessorRequest) => {
+    try {
+      if (editingProfessor) {
+        // TODO: Implement update professor
+        console.log('Update professor:', professor);
+      } else {
+        // Create new professor
+        console.log('Creating professor:', professor);
+        await createProfessor(professor);
+      }
+      setIsFormOpen(false);
+      setEditingProfessor(undefined);
+      refresh();
+      refetchUsers();
+    } catch (error) {
+      console.error('Error saving professor:', error);
+      alert('Failed to save professor. Please try again.');
+    }
+  };
+
+  const handleFormCancel = () => {
+    setIsFormOpen(false);
+    setEditingProfessor(undefined);
   };
 
   const isAdmin = user?.role === 'ADMIN';
@@ -122,43 +177,44 @@ export default function Professors() {
                 {/* Quick stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
                   <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-                    <div className="text-2xl font-bold text-blue-700">{totalElements}</div>
+                    <div className="text-2xl font-bold text-blue-700">{totalProfessors}</div>
                     <div className="text-sm text-blue-600 font-medium">Total</div>
                   </div>
                   <div className="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200">
-                    <div className="text-2xl font-bold text-green-700">{(professors ?? []).filter(p => p.status === 'ACTIVE').length}</div>
+                    <div className="text-2xl font-bold text-green-700">{activeProfessors}</div>
                     <div className="text-sm text-green-600 font-medium">Active</div>
                   </div>
                   <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl border border-purple-200">
-                    <div className="text-2xl font-bold text-purple-700">{(professors ?? []).filter(p => p.rank === 'PROFESSOR').length}</div>
+                    <div className="text-2xl font-bold text-purple-700">{fullProfessors}</div>
                     <div className="text-sm text-purple-600 font-medium">Professors</div>
                   </div>
                   <div className="text-center p-4 bg-gradient-to-br from-yellow-50 to-amber-50 rounded-xl border border-yellow-200">
-                    <div className="text-2xl font-bold text-yellow-700">{currentPage + 1}</div>
+                    <div className="text-2xl font-bold text-yellow-700">1</div>
                     <div className="text-sm text-yellow-600 font-medium">Page</div>
                   </div>
                 </div>
               </div>
               
               <div className="mt-6 lg:mt-0 lg:ml-8 flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={refresh}
-                  disabled={isLoading}
-                  className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-gray-500 to-slate-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
-                >
-                  <RefreshCw className={`w-5 h-5 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                  {isLoading ? 'Refreshing...' : 'Refresh'}
-                </button>
-                
                 {isAdmin && (
-                  <button 
+                  <button
                     onClick={handleCreateProfessor}
-                    className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                    disabled={isLoading}
+                    className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
                   >
-                    <Plus className="w-5 h-5 mr-2" />
+                    <User className="w-5 h-5 mr-2" />
                     Create New
                   </button>
                 )}
+                <button
+                  onClick={() => { refresh(); refetchUsers(); }}
+                  disabled={isLoading || usersLoading}
+                  className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-gray-500 to-slate-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+                >
+                  <RefreshCw className={`w-5 h-5 mr-2 ${isLoading || usersLoading ? 'animate-spin' : ''}`} />
+                  {isLoading || usersLoading ? 'Refreshing...' : 'Refresh'}
+                </button>
+                
               </div>
             </div>
           </div>
@@ -225,7 +281,7 @@ export default function Professors() {
         )}
 
         {/* Loading State */}
-        {isLoading && (professors ?? []).length === 0 && (
+        {(isLoading || usersLoading) && professors.length === 0 && (
           <div className="space-y-6">
             {[...Array(3)].map((_, index) => (
               <div key={index} className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 animate-pulse overflow-hidden relative">
@@ -249,7 +305,7 @@ export default function Professors() {
         )}
 
         {/* Empty State */}
-        {!isLoading && (professors ?? []).length === 0 && !error && (
+        {!isLoading && !usersLoading && professors.length === 0 && !error && !usersError && (
           <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-12 text-center">
             <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
               <GraduationCap className="w-10 h-10 text-gray-400" />
@@ -272,83 +328,130 @@ export default function Professors() {
           </div>
         )}
 
-        {/* Professors List */}
-        {!isLoading && (professors ?? []).length > 0 && (
+        {/* Professors Table */}
+        {!isLoading && !usersLoading && professors.length > 0 && (
           <>
-            <div className="space-y-6 mb-8">
-              {professors.map((professor) => (
-                <div key={`professor-${professor.id}`} className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 overflow-hidden relative">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-500 to-indigo-600"></div>
-                  <div className="flex items-start space-x-4">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <User className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div className="flex-1 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-xl font-semibold text-gray-900">{professor.firstName} {professor.lastName}</h3>
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                          professor.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
-                          professor.status === 'INACTIVE' ? 'bg-red-100 text-red-800' :
-                          professor.status === 'ON_LEAVE' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {professor.status}
-                        </span>
-                      </div>
-                      <div className="flex space-x-4 text-sm text-gray-600">
-                        <span><span className="font-semibold text-gray-700">Rank:</span> {professor.rank}</span>
-                        <span><span className="font-semibold text-gray-700">Department:</span> {professor.department}</span>
-                        <span><span className="font-semibold text-gray-700">ID:</span> {professor.id}</span>
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        <span className="font-semibold text-gray-700">Email:</span> {professor.email}
-                      </div>
-                      {professor.specialization && (
-                        <div className="text-sm text-gray-600">
-                          <span className="font-semibold text-gray-700">Specialization:</span> {professor.specialization}
-                        </div>
-                      )}
-                      
-                      {/* Action Buttons */}
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gradient-to-r from-gray-50 to-slate-50">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Professor
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        ID
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Email
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Department
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Rank
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Status
+                      </th>
                       {isAdmin && (
-                        <div className="flex space-x-3 pt-2">
-                          <button
-                            onClick={() => handleEditProfessor(professor)}
-                            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-sm font-medium rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteProfessor(professor.id)}
-                            disabled={isLoading}
-                            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-red-500 to-pink-600 text-white text-sm font-medium rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50"
-                          >
-                            Delete
-                          </button>
-                        </div>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Actions
+                        </th>
                       )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  totalElements={totalElements}
-                  pageSize={pageSize}
-                  onPageChange={handlePageChange}
-                  onPageSizeChange={handlePageSizeChange}
-                />
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {professors.map((professor) => (
+                      <tr key={`professor-${professor.id}`} className="hover:bg-gray-50 transition-colors duration-200">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0 mr-4">
+                              <User className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div>
+                              <div className="text-sm font-semibold text-gray-900">
+                                {`${professor.firstName} ${professor.lastName}`}
+                              </div>
+                              <div className="text-sm text-gray-500">Professor</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {professor.id}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {professor.email}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {professor.department}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {professor.rank}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                            professor.status === 'ACTIVE' 
+                              ? 'bg-green-100 text-green-800' 
+                              : professor.status === 'INACTIVE'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {professor.status}
+                          </span>
+                        </td>
+                        {isAdmin && (
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => handleEditProfessor(professor)}
+                                className="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-xs font-medium rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteProfessor(professor.id)}
+                                disabled={isLoading}
+                                className="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-red-500 to-pink-600 text-white text-xs font-medium rounded-lg hover:shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            )}
+            </div>
           </>
         )}
+
+        {/* Pagination */}
+        {!isLoading && professors.length > 0 && totalPages > 1 && (
+          <div className="mt-8">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              pageSize={pageSize}
+              onPageSizeChange={handlePageSizeChange}
+              totalElements={totalElements}
+            />
+          </div>
+        )}
       </div>
+
+      {isFormOpen && (
+        <ProfessorForm
+          professor={editingProfessor}
+          isOpen={isFormOpen}
+          onClose={handleFormCancel}
+          onSubmit={handleFormSubmit}
+          isLoading={isLoading}
+        />
+      )}
     </div>
   );
 }

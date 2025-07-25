@@ -28,7 +28,7 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
     message: '',
     userId: 0,
     type: 'GENERAL',
-    priority: 'MEDIUM'
+    priority: 'NORMAL'
   });
 
   // Load users for the dropdown
@@ -55,20 +55,44 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
         message: '',
         userId: 0,
         type: 'GENERAL',
-        priority: 'MEDIUM'
+        priority: 'NORMAL'
       });
     }
   }, [notification, isEditing, isOpen]);
 
   const loadUsers = async () => {
     try {
+      console.log('Loading users for notification form...');
       const response = await adminAPI.getAllUsers();
+      console.log('Users API response:', response);
+      
       if (response.success && response.data) {
-        setUsers(response.data.content || []);
+        // Check different possible response structures
+        let usersArray;
+        if (response.data.content && Array.isArray(response.data.content)) {
+          usersArray = response.data.content;
+          console.log('Found users in response.data.content:', usersArray);
+        } else if (Array.isArray(response.data)) {
+          usersArray = response.data;
+          console.log('Found users in response.data (direct array):', usersArray);
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          usersArray = response.data.data;
+          console.log('Found users in response.data.data:', usersArray);
+        } else {
+          console.log('No users found in response, response.data:', response.data);
+          usersArray = [];
+        }
+        
+        setUsers(usersArray);
+        console.log('Set users state:', usersArray);
+      } else {
+        console.log('Response not successful or no data:', response);
+        setUsers([]);
       }
     } catch (error) {
       console.error('Error loading users:', error);
       showError('Error', 'Failed to load users');
+      setUsers([]);
     }
   };
 
@@ -97,12 +121,19 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
       return;
     }
 
+    console.log('Submitting notification data:', formData);
+    console.log('Selected user ID:', formData.userId);
+    console.log('Selected type:', formData.type);
+    console.log('Selected priority:', formData.priority);
+
     setIsLoading(true);
     try {
       await onSubmit(formData);
       showSuccess('Success', `Notification ${isEditing ? 'updated' : 'created'} successfully`);
       onClose();
     } catch (error: any) {
+      console.error('Error submitting notification:', error);
+      console.error('Error response:', error.response?.data);
       const errorMessage = error.response?.data?.message || `Failed to ${isEditing ? 'update' : 'create'} notification`;
       showError('Error', errorMessage);
     } finally {
@@ -180,11 +211,25 @@ const NotificationForm: React.FC<NotificationFormProps> = ({
                   required
                 >
                   <option value="0">Select User</option>
-                  {users.map(user => (
-                    <option key={user.id} value={user.id}>
-                      {user.firstName} {user.lastName} - {user.email}
-                    </option>
-                  ))}
+                  {users.map(user => {
+                    // Create a display name for the user
+                    let displayName = '';
+                    if (user.firstName && user.lastName) {
+                      displayName = `${user.firstName} ${user.lastName}`;
+                    } else if (user.name) {
+                      displayName = user.name;
+                    } else if (user.username) {
+                      displayName = user.username;
+                    } else {
+                      displayName = `User ${user.id}`;
+                    }
+                    
+                    return (
+                      <option key={user.id} value={user.id}>
+                        {displayName} - {user.email}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 

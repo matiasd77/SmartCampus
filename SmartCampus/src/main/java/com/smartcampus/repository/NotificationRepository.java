@@ -368,4 +368,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     
     @Query("SELECT COUNT(n) FROM Notification n WHERE n.isTemplate = true")
     Long countTemplates();
+
+    void deleteByCreatedAtBefore(LocalDateTime date);
+    void deleteByMessageContaining(String message);
 } 

@@ -118,29 +118,62 @@ export const StudentForm: React.FC<StudentFormProps> = ({
     try {
       let finalStudentData = { ...formData };
 
-      // If creating a new student, create user account first
+      // If creating a new student, handle user account creation
       if (!student) {
-        // Create user account
-        const userData = {
-          name: `${formData.firstName} ${formData.lastName}`,
-          email: formData.email,
-          password: password,
-          role: 'STUDENT' as const
-        };
+        console.log('🔍 StudentForm: Creating new student, checking if user exists...');
+        
+        try {
+          // First, try to register a new user account
+          const userData = {
+            name: `${formData.firstName} ${formData.lastName}`,
+            email: formData.email,
+            password: password,
+            role: 'STUDENT' as const
+          };
 
-        const response = await authAPI.register(userData);
-        // Extract user ID from the LoginResponse structure
-        if (response.data) {
-          finalStudentData.userId = response.data.id;
-        } else {
-          throw new Error('Failed to create user account - no user ID returned');
+          console.log('🔍 StudentForm: User data to register:', userData);
+          const response = await authAPI.register(userData);
+          console.log('🔍 StudentForm: User registration response:', response);
+          
+          // Extract user ID from the LoginResponse structure
+          if (response.data) {
+            finalStudentData.userId = response.data.id;
+            console.log('🔍 StudentForm: User ID extracted:', response.data.id);
+          } else {
+            console.error('🔍 StudentForm: No user ID in response:', response);
+            throw new Error('Failed to create user account - no user ID returned');
+          }
+        } catch (error: any) {
+          // If user already exists, try to find the existing user
+          if (error.response?.data?.message?.includes('already exists')) {
+            console.log('🔍 StudentForm: User already exists, trying to find existing user...');
+            
+            // Try to get the existing user by email
+            try {
+              // We need to get the user ID from the existing user
+              // For now, let's show a more helpful error message
+              alert(`A user with email "${formData.email}" already exists. Please use a different email address or contact an administrator to link this email to a student profile.`);
+              return;
+            } catch (findError) {
+              console.error('🔍 StudentForm: Error finding existing user:', findError);
+              alert(`A user with email "${formData.email}" already exists, but we couldn't retrieve their information. Please use a different email address.`);
+              return;
+            }
+          } else {
+            // Re-throw other errors
+            throw error;
+          }
         }
       }
 
+      console.log('🔍 StudentForm: Final student data to submit:', finalStudentData);
       await onSubmit(finalStudentData);
       onClose();
-    } catch (error) {
-      console.error('Error submitting student form:', error);
+    } catch (error: any) {
+      console.error('🔍 StudentForm: Error submitting student form:', error);
+      console.error('🔍 StudentForm: Error response:', error.response?.data);
+      console.error('🔍 StudentForm: Error status:', error.response?.status);
+      alert(`Failed to save student: ${error.response?.data?.message || error.message}`);
     }
   };
 

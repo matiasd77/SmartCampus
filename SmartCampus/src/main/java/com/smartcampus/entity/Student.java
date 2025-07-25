@@ -13,6 +13,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import jakarta.validation.constraints.Email;
 
 @Entity
 @Table(name = "students")
@@ -43,6 +44,11 @@ public class Student {
     @NotBlank(message = "Last name is required")
     @Column(name = "last_name", nullable = false)
     private String lastName;
+
+    @Email(message = "Email should be valid")
+    @NotBlank(message = "Email is required")
+    @Column(name = "email", nullable = false)
+    private String email;
 
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;

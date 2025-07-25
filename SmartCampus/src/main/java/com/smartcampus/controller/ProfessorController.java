@@ -135,9 +135,18 @@ public class ProfessorController {
         )
     })
     public ResponseEntity<ApiResponse<ProfessorDTO>> createProfessor(@Valid @RequestBody ProfessorDTO professorDTO) {
-        ProfessorDTO createdProfessor = professorService.createProfessor(professorDTO);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Professor created successfully", createdProfessor));
+        System.out.println("🔍 ProfessorController.createProfessor - Received data: " + professorDTO);
+        try {
+            ProfessorDTO createdProfessor = professorService.createProfessor(professorDTO);
+            System.out.println("🔍 ProfessorController.createProfessor - Success: " + createdProfessor);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(ApiResponse.success("Professor created successfully", createdProfessor));
+        } catch (Exception e) {
+            System.err.println("🔍 ProfessorController.createProfessor - Error: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Failed to create professor: " + e.getMessage()));
+        }
     }
 
     @PutMapping("/{id}")
