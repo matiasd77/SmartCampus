@@ -11,6 +11,8 @@ import com.smartcampus.repository.CourseRepository;
 import com.smartcampus.repository.ProfessorRepository;
 import com.smartcampus.service.CourseService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +33,13 @@ public class CourseServiceImpl implements CourseService {
     public List<CourseDTO> getAllCourses() {
         List<Course> courses = courseRepository.findAll();
         return courseMapper.toDtoList(courses);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<CourseDTO> getAllCourses(Pageable pageable) {
+        Page<Course> courses = courseRepository.findAll(pageable);
+        return courses.map(courseMapper::toDto);
     }
 
     @Override

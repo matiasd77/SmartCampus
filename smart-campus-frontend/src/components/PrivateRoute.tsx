@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getStoredToken, getAuthStatus } from '../utils/authUtils';
+import { FullScreenLoader } from './FullScreenLoader';
 
 interface PrivateRouteProps {
   children: React.ReactNode;
@@ -26,15 +27,9 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({
     currentPath: location.pathname
   });
 
+  // If still loading, show loading screen
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
+    return <FullScreenLoader message="Verifying authentication..." />;
   }
 
   // If not authenticated and no stored token, redirect to login

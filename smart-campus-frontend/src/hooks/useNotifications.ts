@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { notificationsAPI } from '../services/api';
 import type { NotificationsResponse, Notification, NotificationFilters, NotificationRequest } from '../types/dashboard';
 import { useToast } from '../contexts/ToastContext';
+import { useAuth } from '../contexts/AuthContext';
 
 export const useNotifications = (initialPage = 0, initialPageSize = 10) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -9,7 +10,7 @@ export const useNotifications = (initialPage = 0, initialPageSize = 10) => {
   const [pageSize, setPageSize] = useState(initialPageSize);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -18,8 +19,26 @@ export const useNotifications = (initialPage = 0, initialPageSize = 10) => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   const { showSuccess, showError } = useToast();
+  const { isLoading: authLoading, isAuthenticated } = useAuth();
+  const isInitialized = useRef(false);
+  const filtersRef = useRef(filters);
+  const currentPageRef = useRef(currentPage);
+  const pageSizeRef = useRef(pageSize);
 
-  const fetchNotifications = async (page: number, size: number, currentFilters: NotificationFilters) => {
+  // Update refs when state changes
+  useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
+
+  useEffect(() => {
+    currentPageRef.current = currentPage;
+  }, [currentPage]);
+
+  useEffect(() => {
+    pageSizeRef.current = pageSize;
+  }, [pageSize]);
+
+  const fetchNotifications = useCallback(async (page: number, size: number, currentFilters: NotificationFilters) => {
     setIsLoading(true);
     setError(null);
 
@@ -30,20 +49,17 @@ export const useNotifications = (initialPage = 0, initialPageSize = 10) => {
       console.log('useNotifications: Fetched notifications:', response);
       console.log('useNotifications: Notifications content:', response.content);
       
-      // Safe assignment with fallback to empty array if content is undefined/null
       setNotifications(response.content ?? []);
       setTotalPages(response.totalPages ?? 0);
       setTotalElements(response.totalElements ?? 0);
       setCurrentPage(response.number ?? 0);
-      setError(null); // Clear any previous errors
+      setError(null);
     } catch (err: any) {
       console.error('useNotifications: Error fetching notifications:', err);
       
-      // Enhanced error handling with specific messages
       let errorMessage = 'Failed to load notifications';
       
       if (!err.response) {
-        // Network error or timeout
         if (err.code === 'ECONNABORTED') {
           errorMessage = 'Request timeout - server is not responding. Please try again.';
         } else if (err.message.includes('Network Error')) {
@@ -68,48 +84,47 @@ export const useNotifications = (initialPage = 0, initialPageSize = 10) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []); // Empty dependency array - function is stable
 
-
-
-  const fetchUnreadCount = async () => {
+  const fetchUnreadCount = useCallback(async () => {
     try {
       const response = await notificationsAPI.getUnreadCount();
-      // Safe assignment with fallback to 0 if count is undefined/null
       setUnreadCount(response.count ?? 0);
     } catch (err) {
       console.error('Error fetching unread count:', err);
     }
-  };
-
-  useEffect(() => {
-    fetchNotifications(currentPage, pageSize, filters);
-  }, [currentPage, pageSize, filters]);
-
-  useEffect(() => {
-    fetchUnreadCount();
   }, []);
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
+  // Main effect for initial data loading
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && !isInitialized.current) {
+      console.log('useNotifications: Auth ready, starting initial data fetch');
+      isInitialized.current = true;
+      fetchNotifications(currentPageRef.current, pageSizeRef.current, filtersRef.current);
+      fetchUnreadCount();
+    }
+  }, [authLoading, isAuthenticated, fetchNotifications, fetchUnreadCount]);
 
-  const handlePageSizeChange = (size: number) => {
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
+
+  const handlePageSizeChange = useCallback((size: number) => {
     setPageSize(size);
     setCurrentPage(0); // Reset to first page when changing page size
-  };
+  }, []);
 
-  const handleFiltersChange = (newFilters: NotificationFilters) => {
+  const handleFiltersChange = useCallback((newFilters: NotificationFilters) => {
     setFilters(newFilters);
     setCurrentPage(0); // Reset to first page when changing filters
-  };
+  }, []);
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setFilters({});
     setCurrentPage(0);
-  };
+  }, []);
 
-  const markAsRead = async (id: number) => {
+  const markAsRead = useCallback(async (id: number) => {
     try {
       await notificationsAPI.markAsRead(id);
       // Safe array update with fallback to empty array if prev is undefined
@@ -125,9 +140,9 @@ export const useNotifications = (initialPage = 0, initialPageSize = 10) => {
       const errorMessage = err.response?.data?.message || 'Failed to mark notification as read';
       showError(errorMessage);
     }
-  };
+  }, [fetchUnreadCount, showSuccess, showError]);
 
-  const markAsArchived = async (id: number) => {
+  const markAsArchived = useCallback(async (id: number) => {
     try {
       await notificationsAPI.markAsArchived(id);
       // Safe array update with fallback to empty array if prev is undefined
@@ -141,9 +156,9 @@ export const useNotifications = (initialPage = 0, initialPageSize = 10) => {
       const errorMessage = err.response?.data?.message || 'Failed to archive notification';
       showError(errorMessage);
     }
-  };
+  }, [showSuccess, showError]);
 
-  const markAllAsRead = async () => {
+  const markAllAsRead = useCallback(async () => {
     try {
       await notificationsAPI.markAllAsRead();
       // Safe array update with fallback to empty array if prev is undefined
@@ -159,33 +174,51 @@ export const useNotifications = (initialPage = 0, initialPageSize = 10) => {
       const errorMessage = err.response?.data?.message || 'Failed to mark all notifications as read';
       showError(errorMessage);
     }
-  };
+  }, [fetchUnreadCount, showSuccess, showError]);
 
-  const deleteNotification = async (id: number) => {
-    setIsDeleting(true);
-    setError(null);
-
+  const deleteNotification = useCallback(async (id: number) => {
     try {
       await notificationsAPI.deleteNotification(id);
       // Safe array update with fallback to empty array if prev is undefined
       setNotifications(prev => (prev ?? []).filter(notification => notification.id !== id));
-      // Refresh unread count
-      fetchUnreadCount();
       showSuccess('Notification deleted successfully');
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to delete notification';
-      setError(errorMessage);
+      showError(errorMessage);
+    }
+  }, [showSuccess, showError]);
+
+  const createNotification = useCallback(async (notificationData: NotificationRequest) => {
+    setIsCreating(true);
+    setError(null);
+
+    try {
+      const response = await notificationsAPI.createNotification(notificationData);
+      
+      if (response.success && response.data) {
+        console.log('useNotifications: Notification created successfully:', response.data);
+        showSuccess('Notification created successfully');
+        
+        // Refresh the notifications list
+        fetchNotifications(currentPageRef.current, pageSizeRef.current, filtersRef.current);
+        
+        return response.data;
+      } else {
+        throw new Error(response.message || 'Failed to create notification');
+      }
+    } catch (err: any) {
+      console.error('useNotifications: Error creating notification:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to create notification';
       showError(errorMessage);
       throw err;
     } finally {
-      setIsDeleting(false);
+      setIsCreating(false);
     }
-  };
+  }, [fetchNotifications, showSuccess, showError]);
 
-  const refresh = () => {
-    fetchNotifications(currentPage, pageSize, filters);
-    fetchUnreadCount();
-  };
+  const refresh = useCallback(() => {
+    fetchNotifications(currentPageRef.current, pageSizeRef.current, filtersRef.current);
+  }, [fetchNotifications]);
 
   return {
     notifications,
@@ -208,6 +241,7 @@ export const useNotifications = (initialPage = 0, initialPageSize = 10) => {
     markAsArchived,
     markAllAsRead,
     deleteNotification,
+    createNotification,
     refresh,
   };
 }; 

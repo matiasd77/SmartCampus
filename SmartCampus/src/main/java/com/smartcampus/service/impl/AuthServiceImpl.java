@@ -1,6 +1,6 @@
 package com.smartcampus.service.impl;
 
-import com.smartcampus.config.JwtTokenProvider;
+import com.smartcampus.config.JwtService;
 import com.smartcampus.dto.JwtResponse;
 import com.smartcampus.dto.LoginRequest;
 import com.smartcampus.dto.RegisterRequest;
@@ -14,6 +14,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -23,7 +24,7 @@ import org.springframework.stereotype.Service;
 public class AuthServiceImpl implements AuthService {
 
     private final AuthenticationManager authenticationManager;
-    private final JwtTokenProvider jwtTokenProvider;
+    private final JwtService jwtService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
@@ -59,15 +60,16 @@ public class AuthServiceImpl implements AuthService {
             log.info("Authentication successful for email: {}", request.getEmail());
             SecurityContextHolder.getContext().setAuthentication(authentication);
             
-            // Generate JWT token
-            log.debug("Generating JWT token for email: {}", request.getEmail());
-            String jwt = jwtTokenProvider.generateToken(authentication);
+            // Generate JWT access token
+            log.debug("Generating JWT access token for email: {}", request.getEmail());
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            String accessToken = jwtService.generateAccessToken(userDetails);
 
             log.info("Login successful for user: {} (ID: {}) with role: {}", 
                     user.getName(), user.getId(), user.getRole());
             
             return JwtResponse.builder()
-                    .token(jwt)
+                    .token(accessToken)
                     .id(user.getId())
                     .name(user.getName())
                     .email(user.getEmail())

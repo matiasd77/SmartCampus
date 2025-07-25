@@ -388,6 +388,100 @@ export const testUsersMeEndpoint = async () => {
   }
 };
 
+// Test students endpoint
+export const testStudentsEndpoint = async () => {
+  try {
+    console.log('Testing students endpoint...');
+    const token = getStoredToken();
+    if (!token) {
+      console.error('No token found');
+      return;
+    }
+
+    const response = await fetch('http://localhost:8080/api/students/debug/count', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    console.log('Students count response status:', response.status);
+    const data = await response.json();
+    console.log('Students count response:', data);
+
+    // Also test the paginated endpoint
+    const paginatedResponse = await fetch('http://localhost:8080/api/students?page=0&size=10', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    console.log('Students paginated response status:', paginatedResponse.status);
+    const paginatedData = await paginatedResponse.json();
+    console.log('Students paginated response:', paginatedData);
+
+  } catch (error) {
+    console.error('Error testing students endpoint:', error);
+  }
+};
+
+// Test all students endpoint (no pagination)
+export const testAllStudentsEndpoint = async () => {
+  try {
+    console.log('Testing all students endpoint...');
+    const token = getStoredToken();
+    if (!token) {
+      console.error('No token found');
+      return;
+    }
+
+    const response = await fetch('http://localhost:8080/api/students/debug/all', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    console.log('All students response status:', response.status);
+    const data = await response.json();
+    console.log('All students response:', data);
+
+  } catch (error) {
+    console.error('Error testing all students endpoint:', error);
+  }
+};
+
+// Test creating test students
+export const testCreateStudents = async () => {
+  try {
+    console.log('Testing create test students endpoint...');
+    const token = getStoredToken();
+    if (!token) {
+      console.error('No token found');
+      return;
+    }
+
+    const response = await fetch('http://localhost:8080/api/students/debug/create-test-students', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    console.log('Create test students response status:', response.status);
+    const data = await response.json();
+    console.log('Create test students response:', data);
+
+  } catch (error) {
+    console.error('Error testing create test students endpoint:', error);
+  }
+};
+
 // Make debug functions globally available
 if (typeof window !== 'undefined') {
   (window as any).debugAuthState = debugAuthState;
@@ -397,6 +491,9 @@ if (typeof window !== 'undefined') {
   (window as any).testDebugEndpoint = testDebugEndpoint;
   (window as any).testAuthEndpoint = testAuthEndpoint;
   (window as any).testUsersMeEndpoint = testUsersMeEndpoint;
+  (window as any).testStudentsEndpoint = testStudentsEndpoint;
+  (window as any).testAllStudentsEndpoint = testAllStudentsEndpoint;
+  (window as any).testCreateStudents = testCreateStudents;
   
   console.log('🔧 Debug functions available globally:');
   console.log('  - debugAuthState()');
@@ -406,4 +503,7 @@ if (typeof window !== 'undefined') {
   console.log('  - testDebugEndpoint()');
   console.log('  - testAuthEndpoint()');
   console.log('  - testUsersMeEndpoint()');
+  console.log('  - testStudentsEndpoint()');
+  console.log('  - testAllStudentsEndpoint()');
+  console.log('  - testCreateStudents()');
 } 

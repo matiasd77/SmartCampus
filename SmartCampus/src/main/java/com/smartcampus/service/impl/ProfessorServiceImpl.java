@@ -8,6 +8,8 @@ import com.smartcampus.mapper.ProfessorMapper;
 import com.smartcampus.repository.ProfessorRepository;
 import com.smartcampus.service.ProfessorService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +29,13 @@ public class ProfessorServiceImpl implements ProfessorService {
     public List<ProfessorDTO> getAllProfessors() {
         List<Professor> professors = professorRepository.findAll();
         return professorMapper.toDtoList(professors);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ProfessorDTO> getAllProfessors(Pageable pageable) {
+        Page<Professor> professors = professorRepository.findAll(pageable);
+        return professors.map(professorMapper::toDto);
     }
 
     @Override

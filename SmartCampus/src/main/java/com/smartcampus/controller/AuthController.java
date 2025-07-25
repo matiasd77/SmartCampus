@@ -1,5 +1,6 @@
 package com.smartcampus.controller;
 
+import com.smartcampus.config.JwtService;
 import com.smartcampus.dto.ApiResponse;
 import com.smartcampus.dto.JwtResponse;
 import com.smartcampus.dto.LoginRequest;
@@ -8,6 +9,7 @@ import com.smartcampus.entity.Role;
 import com.smartcampus.entity.User;
 import com.smartcampus.repository.UserRepository;
 import com.smartcampus.service.AuthService;
+import com.smartcampus.service.CustomUserDetailsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -15,6 +17,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +28,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -42,6 +47,8 @@ public class AuthController {
     private final AuthService authService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
+    private final CustomUserDetailsService userDetailsService;
 
     @Value("${spring.profiles.active:dev}")
     private String activeProfile;
@@ -99,14 +106,19 @@ public class AuthController {
             )
         )
     })
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest, HttpServletResponse response) {
         try {
             log.info("Login attempt for email: {}", loginRequest.getEmail());
             
-            JwtResponse response = authService.login(loginRequest);
+            JwtResponse jwtResponse = authService.login(loginRequest);
+            
+            // Generate refresh token and add to HttpOnly cookie
+            UserDetails userDetails = userDetailsService.loadUserByUsername(loginRequest.getEmail());
+            String refreshToken = jwtService.generateRefreshToken(userDetails);
+            jwtService.addRefreshTokenToCookie(refreshToken, response);
             
             log.info("Login successful for email: {}", loginRequest.getEmail());
-            return ResponseEntity.ok(ApiResponse.success("Login successful", response));
+            return ResponseEntity.ok(ApiResponse.success("Login successful", jwtResponse));
             
         } catch (BadCredentialsException e) {
             log.warn("Invalid credentials for email: {}", loginRequest.getEmail());
@@ -537,6 +549,88 @@ public class AuthController {
             log.error("Error replacing admin", e);
             return ResponseEntity.status(500)
                     .body(ApiResponse.<Map<String, Object>>error("Failed to replace admin"));
+        }
+    }
+
+    @PostMapping("/refresh")
+    @Operation(
+        summary = "Refresh JWT Token",
+        description = "Refresh the JWT token using the refresh token from HttpOnly cookie"
+    )
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "200",
+            description = "Token refreshed successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = JwtResponse.class),
+                examples = @ExampleObject(
+                    name = "Success Response",
+                    value = "{\"success\": true, \"message\": \"Token refreshed successfully\", \"data\": {\"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"}}"
+                )
+            )
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "401",
+            description = "Invalid refresh token",
+            content = @Content(
+                mediaType = "application/json",
+                examples = @ExampleObject(
+                    name = "Error Response",
+                    value = "{\"success\": false, \"message\": \"Invalid refresh token\"}"
+                )
+            )
+        )
+    })
+    public ResponseEntity<ApiResponse<JwtResponse>> refreshToken(HttpServletRequest request, HttpServletResponse response) {
+        try {
+            String refreshToken = jwtService.extractRefreshTokenFromCookie(request);
+            if (refreshToken == null) {
+                log.warn("No refresh token found in cookies");
+                return ResponseEntity.status(401)
+                        .body(ApiResponse.error("No refresh token found"));
+            }
+
+            if (!jwtService.validateRefreshToken(refreshToken)) {
+                log.warn("Invalid refresh token");
+                jwtService.clearRefreshTokenCookie(response);
+                return ResponseEntity.status(401)
+                        .body(ApiResponse.error("Invalid refresh token"));
+            }
+
+            String email = jwtService.getEmailFromRefreshToken(refreshToken);
+            if (email == null) {
+                log.warn("Could not extract email from refresh token");
+                jwtService.clearRefreshTokenCookie(response);
+                return ResponseEntity.status(401)
+                        .body(ApiResponse.error("Invalid refresh token"));
+            }
+
+            UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+            String newAccessToken = jwtService.generateAccessToken(userDetails);
+            String newRefreshToken = jwtService.generateRefreshToken(userDetails);
+
+            // Add new refresh token to cookie
+            jwtService.addRefreshTokenToCookie(newRefreshToken, response);
+
+            // Get user details for response
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+            JwtResponse jwtResponse = JwtResponse.builder()
+                    .token(newAccessToken)
+                    .id(user.getId())
+                    .name(user.getName())
+                    .email(user.getEmail())
+                    .role(user.getRole())
+                    .build();
+
+            return ResponseEntity.ok(ApiResponse.success("Token refreshed successfully", jwtResponse));
+        } catch (Exception e) {
+            log.error("Error refreshing token", e);
+            jwtService.clearRefreshTokenCookie(response);
+            return ResponseEntity.status(500)
+                    .body(ApiResponse.error("Failed to refresh token"));
         }
     }
 

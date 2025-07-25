@@ -4,9 +4,11 @@ import { useNotifications } from '../hooks/useNotifications';
 import { NotificationCard } from '../components/NotificationCard';
 import { NotificationDetailModal } from '../components/NotificationDetailModal';
 import { NotificationFiltersPanel } from '../components/NotificationFilters';
+import NotificationForm from '../components/NotificationForm';
 import { Pagination } from '../components/Pagination';
 import type { Notification } from '../types/dashboard';
 import { Navbar } from '../components/Navbar';
+import { FullScreenLoader } from '../components/FullScreenLoader';
 import { 
   Bell, 
   RefreshCw, 
@@ -20,14 +22,14 @@ import {
 } from 'lucide-react';
 
 export default function Notifications() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const {
     notifications,
     currentPage,
     pageSize,
     totalPages,
     totalElements,
-    isLoading,
+    isLoading: notificationsLoading,
     error,
     isCreating,
     isUpdating,
@@ -42,8 +44,14 @@ export default function Notifications() {
     markAsArchived,
     markAllAsRead,
     deleteNotification,
+    createNotification,
     refresh,
   } = useNotifications();
+
+  // Wait for auth to be initialized before showing any content
+  if (authLoading) {
+    return <FullScreenLoader message="Loading notifications..." />;
+  }
 
   // Early return if notifications is undefined
   if (!notifications) {
@@ -62,6 +70,8 @@ export default function Notifications() {
 
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingNotification, setEditingNotification] = useState<Notification | null>(null);
 
   const handleViewNotification = (notification: Notification) => {
     setSelectedNotification(notification);
@@ -97,6 +107,25 @@ export default function Notifications() {
         handleCloseModal();
       }
     }
+  };
+
+  const handleCreateNotification = () => {
+    setEditingNotification(null);
+    setIsFormOpen(true);
+  };
+
+  const handleFormSubmit = async (notificationData: any) => {
+    try {
+      await createNotification(notificationData);
+      refresh();
+    } catch (error) {
+      console.error('Error creating notification:', error);
+    }
+  };
+
+  const handleFormClose = () => {
+    setIsFormOpen(false);
+    setEditingNotification(null);
   };
 
   // Debug logging for notifications data
@@ -155,15 +184,18 @@ export default function Notifications() {
               <div className="mt-6 lg:mt-0 lg:ml-8 flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={refresh}
-                  disabled={isLoading}
+                  disabled={notificationsLoading}
                   className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-gray-500 to-slate-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
                 >
-                  <RefreshCw className={`w-5 h-5 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                  {isLoading ? 'Refreshing...' : 'Refresh'}
+                  <RefreshCw className={`w-5 h-5 mr-2 ${notificationsLoading ? 'animate-spin' : ''}`} />
+                  {notificationsLoading ? 'Refreshing...' : 'Refresh'}
                 </button>
                 
                 {user?.role === 'ADMIN' && (
-                  <button className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105">
+                  <button
+                    onClick={handleCreateNotification}
+                    className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                  >
                     <Plus className="w-5 h-5 mr-2" />
                     Create New
                   </button>
@@ -202,18 +234,18 @@ export default function Notifications() {
               </div>
               <button
                 onClick={refresh}
-                disabled={isLoading}
+                disabled={notificationsLoading}
                 className="ml-4 inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                {isLoading ? 'Retrying...' : 'Retry'}
+                <RefreshCw className={`w-4 h-4 mr-2 ${notificationsLoading ? 'animate-spin' : ''}`} />
+                {notificationsLoading ? 'Retrying...' : 'Retry'}
               </button>
             </div>
           </div>
         )}
 
         {/* Loading State */}
-        {isLoading && (notifications ?? []).length === 0 && (
+        {notificationsLoading && (notifications ?? []).length === 0 && (
           <div className="space-y-6">
             {[...Array(3)].map((_, index) => (
               <div key={index} className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 animate-pulse overflow-hidden relative">
@@ -237,7 +269,7 @@ export default function Notifications() {
         )}
 
         {/* Empty State */}
-        {!isLoading && (notifications ?? []).length === 0 && !error && (
+        {!notificationsLoading && (notifications ?? []).length === 0 && !error && (
           <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-12 text-center">
             <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-violet-100 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
               <Bell className="w-10 h-10 text-purple-400" />
@@ -262,7 +294,7 @@ export default function Notifications() {
         )}
 
         {/* Notifications List */}
-        {!isLoading && (notifications ?? []).length > 0 && (
+        {!notificationsLoading && (notifications ?? []).length > 0 && (
           <div className="space-y-6 mb-8">
             {(notifications ?? []).map((notification) => (
               <NotificationCard
@@ -279,7 +311,7 @@ export default function Notifications() {
         )}
 
         {/* Pagination */}
-        {!isLoading && totalPages > 1 && (
+        {!notificationsLoading && totalPages > 1 && (
           <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
             <Pagination
               currentPage={currentPage}
@@ -288,7 +320,7 @@ export default function Notifications() {
               pageSize={pageSize}
               onPageChange={handlePageChange}
               onPageSizeChange={handlePageSizeChange}
-              isLoading={isLoading}
+              isLoading={notificationsLoading}
             />
           </div>
         )}
@@ -303,6 +335,15 @@ export default function Notifications() {
         onMarkAsArchived={handleMarkAsArchived}
         onDelete={handleDeleteNotification}
         showActions={true}
+      />
+
+      {/* Create/Edit Form Modal */}
+      <NotificationForm
+        isOpen={isFormOpen}
+        onClose={handleFormClose}
+        onSubmit={handleFormSubmit}
+        notification={editingNotification}
+        isEditing={!!editingNotification}
       />
     </div>
   );

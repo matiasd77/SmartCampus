@@ -13,6 +13,9 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -33,7 +36,7 @@ public class CourseController {
     @PreAuthorize("hasAnyRole('STUDENT', 'PROFESSOR', 'ADMIN')")
     @Operation(
         summary = "Get All Courses",
-        description = "Retrieve a list of all courses in the system"
+        description = "Retrieve a paginated list of all courses in the system"
     )
     @ApiResponses(value = {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -49,8 +52,11 @@ public class CourseController {
             description = "Forbidden - Authentication required"
         )
     })
-    public ResponseEntity<ApiResponse<List<CourseDTO>>> getAllCourses() {
-        List<CourseDTO> courses = courseService.getAllCourses();
+    public ResponseEntity<ApiResponse<Page<CourseDTO>>> getAllCourses(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<CourseDTO> courses = courseService.getAllCourses(pageable);
         return ResponseEntity.ok(ApiResponse.success("Courses retrieved successfully", courses));
     }
 

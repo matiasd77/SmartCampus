@@ -12,6 +12,8 @@ import com.smartcampus.service.StudentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -27,8 +29,25 @@ public class StudentServiceImpl implements StudentService {
     @Override
     @Transactional(readOnly = true)
     public List<StudentDTO> getAllStudents() {
+        System.out.println("DEBUG: StudentServiceImpl.getAllStudents() called");
         List<Student> students = studentRepository.findAll();
-        return studentMapper.toDtoList(students);
+        System.out.println("DEBUG: Found " + students.size() + " students in database");
+        
+        if (students.isEmpty()) {
+            System.out.println("DEBUG: No students found in database");
+        } else {
+            System.out.println("DEBUG: First student details:");
+            Student firstStudent = students.get(0);
+            System.out.println("  - ID: " + firstStudent.getId());
+            System.out.println("  - Student ID: " + firstStudent.getStudentId());
+            System.out.println("  - Name: " + firstStudent.getFirstName() + " " + firstStudent.getLastName());
+            System.out.println("  - User: " + (firstStudent.getUser() != null ? "Linked to user ID " + firstStudent.getUser().getId() : "No user linked"));
+        }
+        
+        List<StudentDTO> studentDTOs = studentMapper.toDtoList(students);
+        System.out.println("DEBUG: Mapped to " + studentDTOs.size() + " DTOs");
+        
+        return studentDTOs;
     }
 
     @Override
@@ -141,5 +160,25 @@ public class StudentServiceImpl implements StudentService {
     public List<StudentDTO> getStudentsByYear(Integer year) {
         List<Student> students = studentRepository.findByYearOfStudy(year);
         return studentMapper.toDtoList(students);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long getStudentCount() {
+        return studentRepository.count();
+    }
+
+    @Override
+    public List<StudentDTO> createTestStudents() {
+        // This method is for testing purposes - create some sample students
+        // Implementation would depend on your test data requirements
+        throw new UnsupportedOperationException("createTestStudents not implemented");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<StudentDTO> getAllStudents(Pageable pageable) {
+        Page<Student> students = studentRepository.findAll(pageable);
+        return students.map(studentMapper::toDto);
     }
 } 

@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtTokenProvider jwtTokenProvider;
+    private final JwtService jwtService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -31,9 +31,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String jwt = getJwtFromRequest(request);
 
-            if (StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt)) {
-                String email = jwtTokenProvider.getEmailFromToken(jwt);
-                List<String> authorities = jwtTokenProvider.getAuthoritiesFromToken(jwt);
+            if (StringUtils.hasText(jwt) && jwtService.validateAccessToken(jwt)) {
+                String email = jwtService.getEmailFromAccessToken(jwt);
+                List<String> authorities = jwtService.getAuthoritiesFromAccessToken(jwt);
                 
                 // Convert string authorities to SimpleGrantedAuthority objects
                 // Ensure they have ROLE_ prefix for Spring Security

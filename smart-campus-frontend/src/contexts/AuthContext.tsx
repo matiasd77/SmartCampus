@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { authAPI } from '../services/api';
 import { clearAuthData, setAuthData, getStoredToken, getStoredUser } from '../utils/authUtils';
@@ -13,6 +13,7 @@ interface AuthContextType {
   logout: () => void;
   checkAuth: () => Promise<boolean>;
   updateUser: (userData: Partial<User>) => void;
+  refreshToken: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,14 +26,78 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const refreshIntervalRef = useRef<number | null>(null);
 
   const isAuthenticated = !!token && !!user;
+
+  // Function to check if token is about to expire (within 5 minutes)
+  const isTokenExpiringSoon = (token: string): boolean => {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Date.now() / 1000;
+      const timeUntilExpiry = payload.exp - currentTime;
+      const fiveMinutes = 5 * 60; // 5 minutes in seconds
+      return timeUntilExpiry < fiveMinutes;
+    } catch (error) {
+      console.error('Error checking token expiration:', error);
+      return true; // Assume expired if we can't parse
+    }
+  };
+
+  // Function to refresh the access token
+  const refreshToken = async (): Promise<boolean> => {
+    try {
+      console.log('AuthContext: Attempting to refresh token...');
+      const newToken = await authAPI.refreshToken();
+      
+      if (newToken) {
+        console.log('AuthContext: Token refreshed successfully');
+        setToken(newToken);
+        setAuthData(newToken, user!);
+        return true;
+      } else {
+        console.warn('AuthContext: Token refresh failed');
+        return false;
+      }
+    } catch (error) {
+      console.error('AuthContext: Error refreshing token:', error);
+      return false;
+    }
+  };
+
+  // Function to start automatic token refresh
+  const startTokenRefresh = () => {
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+    }
+    
+    // Check token every 5 minutes
+    refreshIntervalRef.current = window.setInterval(async () => {
+      if (token && isTokenExpiringSoon(token)) {
+        console.log('AuthContext: Token expiring soon, refreshing...');
+        const success = await refreshToken();
+        if (!success) {
+          console.warn('AuthContext: Token refresh failed, logging out');
+          logout();
+        }
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+  };
+
+  // Function to stop automatic token refresh
+  const stopTokenRefresh = () => {
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+      refreshIntervalRef.current = null;
+    }
+  };
 
   // Initialize authentication state from localStorage
   useEffect(() => {
     const initializeAuth = async () => {
       try {
         console.log('AuthContext: Initializing authentication...');
+        setIsLoading(true);
         
         const savedToken = getStoredToken();
         const savedUser = getStoredUser();
@@ -50,59 +115,90 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               clearAuthData();
               setToken(null);
               setUser(null);
+              setIsLoading(false);
               return;
             }
             
             console.log('AuthContext: Token format is valid, expires at:', new Date(payload.exp * 1000).toISOString());
-            console.log('AuthContext: Token authorities:', payload.authorities || payload.roles || 'No authorities found');
             
           } catch (error) {
             console.error('AuthContext: Invalid token format, clearing auth data:', error);
             clearAuthData();
             setToken(null);
             setUser(null);
+            setIsLoading(false);
             return;
           }
           
-          // Set the token and user from localStorage
+          // Set the token and user from localStorage immediately
           setToken(savedToken);
-          setUser(savedUser);
           
-          // Validate token with backend
+          // Ensure user data has all required fields with proper fallbacks
+          const restoredUser = {
+            id: (savedUser as any).id || (savedUser as any).userId || null,
+            username: (savedUser as any).username || (savedUser as any).email || 'unknown',
+            email: (savedUser as any).email || 'unknown@example.com',
+            role: (savedUser as any).role || (savedUser as any).userRole || 'STUDENT',
+            name: (savedUser as any).name || (savedUser as any).fullName || (savedUser as any).username || (savedUser as any).email || 'Unknown User'
+          };
+          
+          console.log('AuthContext: Restored user data:', restoredUser);
+          setUser(restoredUser);
+          
+          // Start automatic token refresh
+          startTokenRefresh();
+          
+          // Validate token with backend in the background
           try {
             console.log('AuthContext: Validating token with backend...');
             
             // First try the new auth endpoint for debugging
             try {
               const authData = await authAPI.getCurrentUserAuth();
-              console.log('AuthContext: Auth endpoint validation successful:', authData);
+              console.log('AuthContext: Auth endpoint validation successful');
+              
+              // Use the auth data to update user state
+              if (authData) {
+                const updatedUser = {
+                  id: (authData as any).id || (authData as any).userId || restoredUser.id,
+                  username: (authData as any).username || (authData as any).email || restoredUser.username,
+                  email: (authData as any).email || restoredUser.email,
+                  role: (authData as any).role || (authData as any).userRole || restoredUser.role,
+                  name: (authData as any).name || (authData as any).fullName || (authData as any).username || (authData as any).email || restoredUser.name
+                };
+                console.log('AuthContext: Updated user from backend');
+                setUser(updatedUser);
+              }
             } catch (authError: any) {
               console.warn('AuthContext: Auth endpoint failed, trying users/me:', authError.response?.status);
+              
+              // Fallback to users/me endpoint
+              try {
+                const userData = await authAPI.getCurrentUser();
+                console.log('AuthContext: Token validation successful');
+                
+                // Update user data from backend response
+                if (userData) {
+                  const updatedUser = {
+                    id: (userData as any).id || (userData as any).userId || restoredUser.id,
+                    username: (userData as any).username || (userData as any).email || restoredUser.username,
+                    email: (userData as any).email || restoredUser.email,
+                    role: (userData as any).role || (userData as any).userRole || restoredUser.role,
+                    name: (userData as any).name || (userData as any).fullName || (userData as any).username || (userData as any).email || restoredUser.name
+                  };
+                  console.log('AuthContext: Updated user from users/me');
+                  setUser(updatedUser);
+                }
+              } catch (userError: any) {
+                console.warn('AuthContext: Users/me endpoint also failed:', userError.response?.status);
+                // Don't clear authentication if both endpoints fail - keep the stored data
+                console.warn('AuthContext: Keeping stored authentication data despite endpoint failures');
+              }
             }
-            
-            // Then try the regular users/me endpoint
-            const userData = await authAPI.getCurrentUser();
-            console.log('AuthContext: Token validation successful, user data:', userData);
-            
-            // Update user data from backend response
-            if (userData) {
-              setUser(userData);
-            }
-          } catch (error: any) {
-            console.error('AuthContext: Token validation failed:', error);
-            
-            if (error.response?.status === 401) {
-              console.error('AuthContext: 401 Unauthorized - token is invalid, clearing auth data');
-              clearAuthData();
-              setToken(null);
-              setUser(null);
-            } else if (error.response?.status === 403) {
-              console.error('AuthContext: 403 Forbidden - insufficient permissions, but token is valid');
-              // Keep user logged in but log the issue
-              console.error('AuthContext: User may not have required permissions for some endpoints');
-            } else {
-              console.warn('AuthContext: Network error during token validation, keeping user logged in');
-            }
+          } catch (error) {
+            console.error('AuthContext: Error validating token with backend:', error);
+            // Don't clear authentication on backend validation failure
+            console.warn('AuthContext: Keeping stored authentication data despite backend validation failure');
           }
         } else {
           console.log('AuthContext: No saved authentication found');
@@ -117,6 +213,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setUser(null);
         }
       } finally {
+        // Always set loading to false after initialization
+        console.log('AuthContext: Authentication initialization complete');
         setIsLoading(false);
       }
     };
@@ -127,7 +225,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Save token and user to localStorage whenever they change
   useEffect(() => {
     if (token && user) {
-      console.log('AuthContext: Saving authentication to localStorage');
+      console.log('AuthContext: Saving authentication to localStorage', {
+        hasToken: !!token,
+        hasUser: !!user,
+        userRole: user.role,
+        userId: user.id
+      });
       setAuthData(token, user);
     } else if (!token && !user) {
       // Clear localStorage when both token and user are null
@@ -153,65 +256,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      console.log('AuthContext.login - Starting login process for:', email);
       setIsLoading(true);
       
-      console.log('AuthContext.login - Starting login process for:', email);
+      const response = await authAPI.login(email, password);
       
-      const response: LoginResponse = await authAPI.login(email, password);
-      
-      console.log('AuthContext.login - Raw response:', response);
-      console.log('AuthContext.login - Response structure:', {
-        success: response.success,
-        message: response.message,
-        hasData: !!response.data,
-        dataKeys: response.data ? Object.keys(response.data) : 'no data'
-      });
-      
-      // Check if the response indicates success
-      if (!response.success) {
-        console.error('AuthContext.login - Backend returned success: false');
-        console.error('AuthContext.login - Error message:', response.message);
+      if (response && response.success && response.data) {
+        const jwtResponse = response.data as JwtResponse;
+        
+        console.log('AuthContext.login - Login successful, setting authentication data');
+        console.log('AuthContext.login - User data:', {
+          id: jwtResponse.id,
+          name: jwtResponse.name,
+          email: jwtResponse.email,
+          role: jwtResponse.role
+        });
+        
+        // Set authentication data
+        setToken(jwtResponse.token);
+        const userData = {
+          id: jwtResponse.id!,
+          username: jwtResponse.email!, // Use email as username
+          email: jwtResponse.email!,
+          role: jwtResponse.role!,
+          name: jwtResponse.name!
+        };
+        setUser(userData);
+        
+        // Save to localStorage
+        setAuthData(jwtResponse.token, userData);
+        
+        // Start automatic token refresh
+        startTokenRefresh();
+        
+        console.log('AuthContext.login - Authentication setup complete');
+        return true;
+      } else {
+        console.error('AuthContext.login - Invalid response structure:', response);
         return false;
       }
-      
-      // Extract JWT token and user data from the nested structure
-      // Backend returns: { success: true, message: "...", data: { token: "...", user: {...} } }
-      const jwtData: JwtResponse = response.data!;
-      
-      if (!jwtData || !jwtData.token) {
-        console.error('AuthContext.login - No token found in response data');
-        console.error('AuthContext.login - JWT data structure:', jwtData);
-        return false;
-      }
-      
-      console.log('AuthContext.login - Token extracted successfully');
-      console.log('AuthContext.login - User data:', {
-        id: jwtData.id,
-        name: jwtData.name,
-        email: jwtData.email,
-        role: jwtData.role
-      });
-      
-      // Create user object from JWT response data
-      const userData: User = {
-        id: jwtData.id,
-        username: jwtData.email, // Use email as username since backend doesn't have separate username
-        email: jwtData.email,
-        role: jwtData.role,
-        firstName: jwtData.name?.split(' ')[0], // Extract first name from full name
-        lastName: jwtData.name?.split(' ').slice(1).join(' ') // Extract last name from full name
-      };
-      
-      // Save token and user data to localStorage and state
-      setAuthData(jwtData.token, userData);
-      setToken(jwtData.token);
-      setUser(userData);
-      
-      console.log('AuthContext.login - Login successful, token and user data saved to localStorage');
-      return true;
-      
-    } catch (error) {
-      console.error('AuthContext.login - Login failed with error:', error);
+    } catch (error: any) {
+      console.error('AuthContext.login - Login failed:', error);
+      console.error('AuthContext.login - Error response:', error.response?.data);
       return false;
     } finally {
       setIsLoading(false);
@@ -219,15 +305,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
-    console.log('AuthContext.logout - Clearing authentication data');
+    console.log('AuthContext.logout - Logging out user');
+    
+    // Stop automatic token refresh
+    stopTokenRefresh();
+    
+    // Clear authentication data
+    clearAuthData();
     setToken(null);
     setUser(null);
-    clearAuthData();
     
-    // Redirect to login page
-    if (window.location.pathname !== '/login') {
-      window.location.href = '/login';
-    }
+    console.log('AuthContext.logout - Logout complete');
   };
 
   const checkAuth = async (): Promise<boolean> => {
@@ -319,6 +407,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     checkAuth,
     updateUser,
+    refreshToken,
   };
 
   return (

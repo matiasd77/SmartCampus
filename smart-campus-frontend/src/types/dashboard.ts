@@ -23,13 +23,14 @@ export interface Student {
 }
 
 export interface StudentRequest {
+  studentId: string;
   firstName: string;
   lastName: string;
   email: string;
-  studentId: string;
-  major: string;
   yearOfStudy: number;
+  major: string;
   status: string;
+  userId: number;
 }
 
 // Professor Types
@@ -500,6 +501,11 @@ export const STUDENT_YEARS = [
   { value: 3, label: 'Third Year', color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
   { value: 4, label: 'Fourth Year', color: 'text-purple-600', bgColor: 'bg-purple-100' },
   { value: 5, label: 'Fifth Year', color: 'text-red-600', bgColor: 'bg-red-100' },
+  { value: 6, label: 'Sixth Year', color: 'text-indigo-600', bgColor: 'bg-indigo-100' },
+  { value: 7, label: 'Seventh Year', color: 'text-pink-600', bgColor: 'bg-pink-100' },
+  { value: 8, label: 'Eighth Year', color: 'text-orange-600', bgColor: 'bg-orange-100' },
+  { value: 9, label: 'Ninth Year', color: 'text-teal-600', bgColor: 'bg-teal-100' },
+  { value: 10, label: 'Tenth Year', color: 'text-cyan-600', bgColor: 'bg-cyan-100' },
 ];
 
 export const PROFESSOR_STATUSES = [

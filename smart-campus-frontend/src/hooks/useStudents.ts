@@ -19,19 +19,64 @@ export const useStudents = (initialPage = 0, initialPageSize = 10) => {
 
   const { showSuccess, showError } = useToast();
 
-  const fetchStudents = async (page: number, size: number, currentFilters: StudentFilters) => {
+  const fetchStudents = async (currentFilters: StudentFilters) => {
     setIsLoading(true);
     setError(null);
 
+    console.log('useStudents: Fetching students with filters:', currentFilters);
+
     try {
-      const response: StudentsResponse = await studentsAPI.getStudents(page, size, currentFilters);
+      const response = await studentsAPI.getStudents(currentFilters);
       
-      setStudents(response.content);
-      setTotalPages(response.totalPages);
-      setTotalElements(response.totalElements);
-      setCurrentPage(response.number);
+      console.log('useStudents: API response:', response);
+      console.log('useStudents: Response structure:', {
+        success: response.success,
+        message: response.message,
+        hasData: !!response.data,
+        dataType: typeof response.data,
+        dataKeys: response.data ? Object.keys(response.data) : 'no data'
+      });
+      
+      // Handle the new response format where data is a simple array
+      if (response.success && response.data) {
+        console.log('useStudents: Data array:', response.data);
+        console.log('useStudents: Data length:', response.data.length);
+        
+        // Check if data is an array
+        if (Array.isArray(response.data)) {
+          setStudents(response.data || []);
+          setTotalPages(1); // Since we're not paginating anymore
+          setTotalElements(response.data.length || 0);
+          setCurrentPage(0);
+          
+          console.log('useStudents: State updated successfully:', {
+            studentsCount: response.data.length || 0,
+            totalPages: 1,
+            totalElements: response.data.length || 0,
+            currentPage: 0
+          });
+        } else {
+          console.error('useStudents: Data is not an array:', response.data);
+          setError('Invalid response format: data is not an array');
+          setStudents([]);
+          setTotalPages(0);
+          setTotalElements(0);
+        }
+      } else {
+        console.error('useStudents: Invalid response format:', response);
+        setError('Failed to load students: ' + (response.message || 'Unknown error'));
+        setStudents([]);
+        setTotalPages(0);
+        setTotalElements(0);
+      }
     } catch (err: any) {
       console.error('Error fetching students:', err);
+      console.error('Error details:', {
+        message: err.message,
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data
+      });
       setError(err.response?.data?.message || 'Failed to load students');
       setStudents([]);
       setTotalPages(0);
@@ -82,8 +127,8 @@ export const useStudents = (initialPage = 0, initialPageSize = 10) => {
   };
 
   useEffect(() => {
-    fetchStudents(currentPage, pageSize, filters);
-  }, [currentPage, pageSize, filters]);
+    fetchStudents(filters);
+  }, [filters]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -123,7 +168,7 @@ export const useStudents = (initialPage = 0, initialPageSize = 10) => {
   };
 
   const refresh = () => {
-    fetchStudents(currentPage, pageSize, filters);
+    fetchStudents(filters);
   };
 
   return {

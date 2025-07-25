@@ -4,7 +4,8 @@ import { NOTIFICATION_PRIORITIES, NOTIFICATION_TYPES, NOTIFICATION_STATUSES } fr
 import { 
   Filter, 
   X, 
-  Search
+  Search,
+  CheckCircle
 } from 'lucide-react';
 
 interface NotificationFiltersPanelProps {
@@ -77,6 +78,7 @@ export const NotificationFiltersPanel: React.FC<NotificationFiltersPanelProps> =
             <div className="relative">
               <select
                 id="status-filter"
+                name="status"
                 value={filters.status || ''}
                 onChange={(e) => handleFilterChange('status', e.target.value || undefined)}
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 appearance-none bg-white"
@@ -104,6 +106,7 @@ export const NotificationFiltersPanel: React.FC<NotificationFiltersPanelProps> =
             <div className="relative">
               <select
                 id="priority-filter"
+                name="priority"
                 value={filters.priority || ''}
                 onChange={(e) => handleFilterChange('priority', e.target.value || undefined)}
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 appearance-none bg-white"
@@ -131,6 +134,7 @@ export const NotificationFiltersPanel: React.FC<NotificationFiltersPanelProps> =
             <div className="relative">
               <select
                 id="type-filter"
+                name="type"
                 value={filters.type || ''}
                 onChange={(e) => handleFilterChange('type', e.target.value || undefined)}
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 appearance-none bg-white"
@@ -158,6 +162,7 @@ export const NotificationFiltersPanel: React.FC<NotificationFiltersPanelProps> =
             <div className="relative">
               <select
                 id="read-filter"
+                name="read"
                 value={filters.read === undefined ? '' : filters.read.toString()}
                 onChange={(e) => handleFilterChange('read', e.target.value === '' ? undefined : e.target.value === 'true')}
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 appearance-none bg-white"

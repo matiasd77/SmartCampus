@@ -482,6 +482,50 @@ public class NotificationController {
                 .body(ApiResponse.success("System broadcast notification sent successfully", null));
     }
 
+    @PostMapping("/debug/create-test-notifications")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(
+        summary = "Create Test Notifications (Debug)",
+        description = "Create sample notifications for the current user for testing purposes"
+    )
+    @ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "200",
+            description = "Test notifications created successfully"
+        ),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(
+            responseCode = "401",
+            description = "Unauthorized - Authentication required"
+        )
+    })
+    public ResponseEntity<ApiResponse<String>> createTestNotifications() {
+        try {
+            Long userId = getCurrentUserId();
+            String userName = getCurrentUserName();
+            
+            // Create sample notifications
+            notificationService.sendSystemNotification(userId, "Welcome to SmartCampus! This is your first notification.", 
+                com.smartcampus.entity.NotificationType.WELCOME, com.smartcampus.entity.NotificationPriority.NORMAL);
+            
+            notificationService.sendSystemNotification(userId, "Your course registration has been confirmed.", 
+                com.smartcampus.entity.NotificationType.COURSE_ENROLLMENT, com.smartcampus.entity.NotificationPriority.HIGH);
+            
+            notificationService.sendSystemNotification(userId, "New assignment posted in Computer Science 101.", 
+                com.smartcampus.entity.NotificationType.ASSIGNMENT_DUE, com.smartcampus.entity.NotificationPriority.NORMAL);
+            
+            notificationService.sendSystemNotification(userId, "System maintenance scheduled for tomorrow at 2 AM.", 
+                com.smartcampus.entity.NotificationType.SYSTEM_MAINTENANCE, com.smartcampus.entity.NotificationPriority.URGENT);
+            
+            notificationService.sendSystemNotification(userId, "Your profile has been updated successfully.", 
+                com.smartcampus.entity.NotificationType.ACCOUNT_UPDATE, com.smartcampus.entity.NotificationPriority.LOW);
+            
+            return ResponseEntity.ok(ApiResponse.success("Test notifications created successfully for user: " + userName));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to create test notifications: " + e.getMessage()));
+        }
+    }
+
     // Additional user-specific endpoints
     @GetMapping("/type/{type}")
     @Operation(
@@ -702,20 +746,26 @@ public class NotificationController {
     // Helper methods
     private Long getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getPrincipal() instanceof org.springframework.security.core.userdetails.UserDetails) {
-            org.springframework.security.core.userdetails.UserDetails userDetails = 
-                (org.springframework.security.core.userdetails.UserDetails) authentication.getPrincipal();
-            // This assumes you have a way to get user ID from UserDetails
-            // You might need to implement this based on your UserDetails implementation
-            return 1L; // Placeholder - implement based on your user management
+        if (authentication != null && authentication.getPrincipal() instanceof String) {
+            String email = (String) authentication.getPrincipal();
+            try {
+                return userService.findByEmail(email).getId();
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to get user ID for email: " + email, e);
+            }
         }
         throw new RuntimeException("User not authenticated");
     }
 
     private String getCurrentUserName() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null) {
-            return authentication.getName();
+        if (authentication != null && authentication.getPrincipal() instanceof String) {
+            String email = (String) authentication.getPrincipal();
+            try {
+                return userService.findByEmail(email).getName();
+            } catch (Exception e) {
+                return email; // Fallback to email if name retrieval fails
+            }
         }
         return "System";
     }

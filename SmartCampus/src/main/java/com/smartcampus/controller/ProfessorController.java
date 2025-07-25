@@ -13,6 +13,9 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -35,7 +38,7 @@ public class ProfessorController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
         summary = "Get All Professors",
-        description = "Retrieve a list of all professors in the system (Admin only)"
+        description = "Retrieve a paginated list of all professors in the system (Admin only)"
     )
     @ApiResponses(value = {
         @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -51,8 +54,11 @@ public class ProfessorController {
             description = "Forbidden - Admin access required"
         )
     })
-    public ResponseEntity<ApiResponse<List<ProfessorDTO>>> getAllProfessors() {
-        List<ProfessorDTO> professors = professorService.getAllProfessors();
+    public ResponseEntity<ApiResponse<Page<ProfessorDTO>>> getAllProfessors(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ProfessorDTO> professors = professorService.getAllProfessors(pageable);
         return ResponseEntity.ok(ApiResponse.success("Professors retrieved successfully", professors));
     }
 

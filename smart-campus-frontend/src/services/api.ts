@@ -25,6 +25,12 @@ const api = axios.create({
 // Request interceptor to add JWT token and handle requests
 api.interceptors.request.use(
   (config) => {
+    // Skip auth interceptor if header is present
+    if (config.headers?.['X-Skip-Auth-Interceptor'] === 'true') {
+      console.log(`API Request: ${config.method?.toUpperCase()} ${config.url} - Skipping auth interceptor`);
+      return config;
+    }
+
     // Get token from localStorage and automatically include in all requests
     const token = getStoredToken();
     
@@ -102,7 +108,7 @@ api.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
+  async (error) => {
     // Enhanced error logging
     console.error('API Error Details:', {
       message: error.message,
@@ -140,13 +146,37 @@ api.interceptors.response.use(
       console.error('Network Error:', errorMessage);
     }
 
-    // Handle authentication errors
+    // Handle authentication errors (401 Unauthorized)
     if (error.response?.status === 401) {
       console.log('API: Unauthorized request (401), handling authentication error');
       
       const currentPath = window.location.pathname;
       const isAuthRequest = error.config?.url?.includes('/auth/');
+      const isRefreshRequest = error.config?.url?.includes('/auth/refresh');
+      const skipAuthInterceptor = error.config?.headers?.['X-Skip-Auth-Interceptor'] === 'true';
       
+      // Don't try to refresh if this is already a refresh request or if auth interceptor is skipped
+      if (!isRefreshRequest && !isAuthRequest && !skipAuthInterceptor) {
+        try {
+          // Try to refresh the token
+          console.log('API: Attempting token refresh...');
+          const refreshResponse = await api.post('/auth/refresh', {}, { 
+            headers: { 'X-Skip-Auth-Interceptor': 'true' }
+          });
+          
+          if (refreshResponse.data?.token) {
+            console.log('API: Token refresh successful, retrying original request');
+            // Update the token in the original request
+            error.config.headers.Authorization = `Bearer ${refreshResponse.data.token}`;
+            // Retry the original request
+            return api.request(error.config);
+          }
+        } catch (refreshError) {
+          console.log('API: Token refresh failed, logging out user');
+        }
+      }
+      
+      // If refresh failed or this is an auth request, handle logout
       if (currentPath !== '/login' && currentPath !== '/register' && !isAuthRequest) {
         console.log('API: Clearing authentication and redirecting to login');
         clearAuthData();
@@ -273,12 +303,6 @@ export const authAPI = {
       }
     }
     
-    // Check if user has required role before making request
-    if (!hasAnyRole(['STUDENT', 'PROFESSOR', 'ADMIN'])) {
-      console.error('authAPI.getCurrentUser - User does not have required role. Current role:', userRole);
-      throw new Error('Insufficient permissions: User must have STUDENT, PROFESSOR, or ADMIN role');
-    }
-    
     try {
       const response = await api.get('/users/me');
       console.log('authAPI.getCurrentUser - Response:', response.data);
@@ -328,21 +352,34 @@ export const authAPI = {
     try {
       const response = await api.get('/auth/current-user');
       console.log('authAPI.getCurrentUserAuth - Response:', response.data);
-      
-      // Handle ApiResponse wrapper structure
-      if (response.data && response.data.success && response.data.data) {
-        console.log('authAPI.getCurrentUserAuth - Extracting user data from ApiResponse');
-        return response.data.data;
-      } else {
-        console.error('authAPI.getCurrentUserAuth - Unexpected response structure:', response.data);
-        throw new Error('Invalid response structure from getCurrentUserAuth');
-      }
+      return response.data;
     } catch (error: any) {
       console.error('authAPI.getCurrentUserAuth - Error:', error);
       console.error('authAPI.getCurrentUserAuth - Error response:', error.response?.data);
       console.error('authAPI.getCurrentUserAuth - Error status:', error.response?.status);
-      console.error('authAPI.getCurrentUserAuth - Error statusText:', error.response?.statusText);
       throw error;
+    }
+  },
+
+  refreshToken: async (): Promise<string | null> => {
+    console.log('authAPI.refreshToken - Making request to /auth/refresh');
+    
+    try {
+      const response = await api.post('/auth/refresh', {}, { withCredentials: true });
+      console.log('authAPI.refreshToken - Response:', response.data);
+      
+      if (response.data && response.data.success && response.data.data && response.data.data.token) {
+        console.log('authAPI.refreshToken - New access token received');
+        return response.data.data.token;
+      } else {
+        console.error('authAPI.refreshToken - Invalid response structure:', response.data);
+        return null;
+      }
+    } catch (error: any) {
+      console.error('authAPI.refreshToken - Error:', error);
+      console.error('authAPI.refreshToken - Error response:', error.response?.data);
+      console.error('authAPI.refreshToken - Error status:', error.response?.status);
+      return null;
     }
   },
 };
@@ -585,7 +622,9 @@ export const coursesAPI = {
   }) => {
     try {
       const params = { page, size, ...filters };
+      console.log('coursesAPI.getCourses: Making request with params:', params);
       const response = await api.get('/courses', { params });
+      console.log('coursesAPI.getCourses: Response received:', response.data);
       return response.data;
     } catch (error) {
       console.error('coursesAPI.getCourses - Error:', error);
@@ -974,9 +1013,11 @@ export const attendanceAPI = {
 export const announcementsAPI = {
   getAnnouncements: async (page = 0, size = 10) => {
     try {
-      const response = await api.get('/announcements/paginated', {
-        params: { page, size }
+      console.log('announcementsAPI.getAnnouncements: Making request with page:', page, 'size:', size);
+      const response = await api.get('/announcements/paginated', { 
+        params: { page, size } 
       });
+      console.log('announcementsAPI.getAnnouncements: Response received:', response.data);
       return response.data;
     } catch (error) {
       console.error('announcementsAPI.getAnnouncements - Error:', error);
@@ -1003,10 +1044,39 @@ export const announcementsAPI = {
     isPublic: boolean;
   }) => {
     try {
-      const response = await api.post('/announcements', announcementData);
+      // Get current user from localStorage
+      const userData = localStorage.getItem('user');
+      let postedById = 0;
+      
+      if (userData) {
+        try {
+          const user = JSON.parse(userData);
+          postedById = user.id;
+          console.log('announcementsAPI.createAnnouncement: Found user ID:', postedById);
+        } catch (e) {
+          console.error('Error parsing user data:', e);
+        }
+      } else {
+        console.warn('announcementsAPI.createAnnouncement: No user data found in localStorage');
+      }
+      
+      // Add postedById to the announcement data
+      const requestData = {
+        ...announcementData,
+        postedById
+      };
+      
+      console.log('announcementsAPI.createAnnouncement: Original data:', announcementData);
+      console.log('announcementsAPI.createAnnouncement: Sending data with postedById:', requestData);
+      const response = await api.post('/announcements', requestData);
+      console.log('announcementsAPI.createAnnouncement: Response received:', response.data);
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('announcementsAPI.createAnnouncement - Error:', error);
+      if (error.response) {
+        console.error('announcementsAPI.createAnnouncement - Response status:', error.response.status);
+        console.error('announcementsAPI.createAnnouncement - Response data:', error.response.data);
+      }
       throw error;
     }
   },
@@ -1079,8 +1149,11 @@ export const notificationsAPI = {
     read?: boolean;
   }) => {
     try {
-      const params = { page, size, ...filters };
-      const response = await api.get('/notifications', { params });
+      console.log('notificationsAPI.getNotifications: Making request with page:', page, 'size:', size, 'filters:', filters);
+      const response = await api.get('/notifications/paginated', { 
+        params: { page, size, ...filters } 
+      });
+      console.log('notificationsAPI.getNotifications: Response received:', response.data);
       return response.data;
     } catch (error) {
       console.error('notificationsAPI.getNotifications - Error:', error);
@@ -1167,19 +1240,36 @@ export const notificationsAPI = {
       throw error;
     }
   },
+
+  createNotification: async (notificationData: {
+    title: string;
+    message: string;
+    userId: number;
+    type: string;
+    priority: string;
+  }) => {
+    try {
+      const response = await api.post('/notifications', notificationData);
+      return response.data;
+    } catch (error) {
+      console.error('notificationsAPI.createNotification - Error:', error);
+      throw error;
+    }
+  },
 };
 
 // Students API calls
 export const studentsAPI = {
-  getStudents: async (page = 0, size = 10, filters?: {
+  getStudents: async (filters?: {
     search?: string;
     status?: string;
     major?: string;
     year?: string;
   }) => {
     try {
-      const params = { page, size, ...filters };
-      const response = await api.get('/students', { params });
+      console.log('studentsAPI.getStudents: Making request with filters:', filters);
+      const response = await api.get('/students', { params: filters });
+      console.log('studentsAPI.getStudents: Response received:', response.data);
       return response.data;
     } catch (error) {
       console.error('studentsAPI.getStudents - Error:', error);
@@ -1198,13 +1288,14 @@ export const studentsAPI = {
   },
   
   createStudent: async (studentData: {
+    studentId: string;
     firstName: string;
     lastName: string;
     email: string;
-    studentId: string;
-    major: string;
     yearOfStudy: number;
+    major: string;
     status: string;
+    userId: number;
   }) => {
     try {
       const response = await api.post('/students', studentData);
@@ -1216,13 +1307,14 @@ export const studentsAPI = {
   },
   
   updateStudent: async (id: number, studentData: {
+    studentId?: string;
     firstName?: string;
     lastName?: string;
     email?: string;
-    studentId?: string;
-    major?: string;
     yearOfStudy?: number;
+    major?: string;
     status?: string;
+    userId?: number;
   }) => {
     try {
       const response = await api.put(`/students/${id}`, studentData);
@@ -1284,7 +1376,9 @@ export const professorsAPI = {
   }) => {
     try {
       const params = { page, size, ...filters };
+      console.log('professorsAPI.getProfessors: Making request with params:', params);
       const response = await api.get('/professors', { params });
+      console.log('professorsAPI.getProfessors: Response received:', response.data);
       return response.data;
     } catch (error) {
       console.error('professorsAPI.getProfessors - Error:', error);
@@ -1372,6 +1466,61 @@ export const professorsAPI = {
       return response.data;
     } catch (error) {
       console.error('professorsAPI.getProfessorsByStatus - Error:', error);
+      throw error;
+    }
+  },
+};
+
+// Admin API endpoints
+export const adminAPI = {
+  getAllUsers: async () => {
+    try {
+      const response = await api.get('/admin/users');
+      return response.data;
+    } catch (error) {
+      console.error('adminAPI.getAllUsers - Error:', error);
+      throw error;
+    }
+  },
+  
+  deleteUser: async (id: number) => {
+    try {
+      const response = await api.delete(`/admin/users/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('adminAPI.deleteUser - Error:', error);
+      throw error;
+    }
+  },
+  
+  updateUser: async (id: number, userData: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    role?: string;
+    isActive?: boolean;
+  }) => {
+    try {
+      const response = await api.put(`/admin/users/${id}`, userData);
+      return response.data;
+    } catch (error) {
+      console.error('adminAPI.updateUser - Error:', error);
+      throw error;
+    }
+  },
+  
+  createUser: async (userData: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    role: string;
+  }) => {
+    try {
+      const response = await api.post('/admin/users', userData);
+      return response.data;
+    } catch (error) {
+      console.error('adminAPI.createUser - Error:', error);
       throw error;
     }
   },

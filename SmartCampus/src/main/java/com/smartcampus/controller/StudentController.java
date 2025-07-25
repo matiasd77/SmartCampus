@@ -51,7 +51,9 @@ public class StudentController {
         )
     })
     public ResponseEntity<ApiResponse<List<StudentDTO>>> getAllStudents() {
+        System.out.println("DEBUG: StudentController.getAllStudents() called");
         List<StudentDTO> students = studentService.getAllStudents();
+        System.out.println("DEBUG: Controller returning " + students.size() + " students");
         return ResponseEntity.ok(ApiResponse.success("Students retrieved successfully", students));
     }
 

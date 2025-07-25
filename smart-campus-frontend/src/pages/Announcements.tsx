@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAnnouncements } from '../hooks/useAnnouncements';
 import { AnnouncementCard } from '../components/AnnouncementCard';
 import { AnnouncementDetailModal } from '../components/AnnouncementDetailModal';
+import AnnouncementForm from '../components/AnnouncementForm';
 import { Pagination } from '../components/Pagination';
 import type { Announcement } from '../types/dashboard';
 import { Navbar } from '../components/Navbar';
@@ -55,6 +56,8 @@ export default function Announcements() {
 
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
 
   const handleViewAnnouncement = (announcement: Announcement) => {
     setSelectedAnnouncement(announcement);
@@ -67,8 +70,8 @@ export default function Announcements() {
   };
 
   const handleEditAnnouncement = (announcement: Announcement) => {
-    // TODO: Navigate to edit page or open edit modal
-    console.log('Edit announcement:', announcement);
+    setEditingAnnouncement(announcement);
+    setIsFormOpen(true);
   };
 
   const handleDeleteAnnouncement = async (id: number) => {
@@ -80,6 +83,25 @@ export default function Announcements() {
         console.error('Error deleting announcement:', error);
       }
     }
+  };
+
+  const handleCreateAnnouncement = () => {
+    setEditingAnnouncement(null);
+    setIsFormOpen(true);
+  };
+
+  const handleFormSubmit = async (announcementData: any) => {
+    if (editingAnnouncement) {
+      await updateAnnouncement(editingAnnouncement.id, announcementData);
+    } else {
+      await createAnnouncement(announcementData);
+    }
+    refresh();
+  };
+
+  const handleFormClose = () => {
+    setIsFormOpen(false);
+    setEditingAnnouncement(null);
   };
 
   const isAdmin = user?.role === 'ADMIN';
@@ -148,7 +170,10 @@ export default function Announcements() {
                 </button>
                 
                 {isAdmin && (
-                  <button className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105">
+                  <button 
+                    onClick={handleCreateAnnouncement}
+                    className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                  >
                     <Plus className="w-5 h-5 mr-2" />
                     Create New
                   </button>
@@ -167,6 +192,8 @@ export default function Announcements() {
               </div>
               <input
                 type="text"
+                id="announcement-search"
+                name="announcementSearch"
                 placeholder="Search announcements..."
                 className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
               />
@@ -249,7 +276,10 @@ export default function Announcements() {
               There are no announcements to display at the moment. Check back later for updates or create a new announcement if you're an administrator.
             </p>
             {isAdmin && (
-              <button className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105">
+              <button 
+                onClick={handleCreateAnnouncement}
+                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+              >
                 <Plus className="w-5 h-5 mr-2" />
                 Create First Announcement
               </button>
@@ -297,6 +327,15 @@ export default function Announcements() {
         onEdit={isAdmin ? handleEditAnnouncement : undefined}
         onDelete={isAdmin ? handleDeleteAnnouncement : undefined}
         showActions={isAdmin}
+      />
+
+      {/* Announcement Form Modal */}
+      <AnnouncementForm
+        isOpen={isFormOpen}
+        onClose={handleFormClose}
+        onSubmit={handleFormSubmit}
+        announcement={editingAnnouncement}
+        isEditing={!!editingAnnouncement}
       />
     </div>
   );

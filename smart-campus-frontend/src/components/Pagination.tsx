@@ -72,6 +72,7 @@ export const Pagination: React.FC<PaginationProps> = ({
             </label>
             <select
               id="page-size"
+              name="pageSize"
               value={pageSize}
               onChange={(e) => onPageSizeChange(Number(e.target.value))}
               disabled={isLoading}

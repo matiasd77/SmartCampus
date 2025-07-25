@@ -23,15 +23,53 @@ export const useProfessors = (initialPage = 0, initialPageSize = 10) => {
     setIsLoading(true);
     setError(null);
 
+    console.log('useProfessors: Fetching professors with:', { page, size, currentFilters });
+
     try {
-      const response: ProfessorsResponse = await professorsAPI.getProfessors(page, size, currentFilters);
+      const response = await professorsAPI.getProfessors(page, size, currentFilters);
       
-      setProfessors(response.content);
-      setTotalPages(response.totalPages);
-      setTotalElements(response.totalElements);
-      setCurrentPage(response.number);
+      console.log('useProfessors: API response:', response);
+      console.log('useProfessors: Response structure:', {
+        success: response.success,
+        message: response.message,
+        hasData: !!response.data,
+        dataType: typeof response.data,
+        dataKeys: response.data ? Object.keys(response.data) : 'no data'
+      });
+      
+      // Handle the new paginated response format
+      if (response.success && response.data) {
+        const pageData = response.data;
+        console.log('useProfessors: Page data:', pageData);
+        console.log('useProfessors: Content array:', pageData.content);
+        console.log('useProfessors: Content length:', pageData.content?.length);
+        
+        setProfessors(pageData.content || []);
+        setTotalPages(pageData.totalPages || 0);
+        setTotalElements(pageData.totalElements || 0);
+        setCurrentPage(pageData.number || 0);
+        
+        console.log('useProfessors: State updated:', {
+          professorsCount: pageData.content?.length || 0,
+          totalPages: pageData.totalPages || 0,
+          totalElements: pageData.totalElements || 0,
+          currentPage: pageData.number || 0
+        });
+      } else {
+        console.error('useProfessors: Invalid response format:', response);
+        setError('Failed to load professors');
+        setProfessors([]);
+        setTotalPages(0);
+        setTotalElements(0);
+      }
     } catch (err: any) {
       console.error('Error fetching professors:', err);
+      console.error('Error details:', {
+        message: err.message,
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data
+      });
       setError(err.response?.data?.message || 'Failed to load professors');
       setProfessors([]);
       setTotalPages(0);

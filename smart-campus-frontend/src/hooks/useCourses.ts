@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { coursesAPI } from '../services/api';
 import type { Course, CourseRequest, CourseFilters } from '../types/dashboard';
 import { useToast } from '../contexts/ToastContext';
+import { useAuth } from '../contexts/AuthContext';
 
 export const useCourses = () => {
   const [courses, setCourses] = useState<Course[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -21,46 +22,56 @@ export const useCourses = () => {
   });
 
   const { showSuccess, showError } = useToast();
+  const { isLoading: authLoading, isAuthenticated, logout } = useAuth();
   const isInitialized = useRef(false);
+  const filtersRef = useRef(filters);
+  const paginationRef = useRef(pagination);
 
-  const fetchCourses = async (page = 0, size = 10, newFilters?: CourseFilters) => {
+  // Update refs when state changes
+  useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
+
+  useEffect(() => {
+    paginationRef.current = pagination;
+  }, [pagination]);
+
+  const fetchCourses = useCallback(async (page = 0, size = 10, newFilters?: CourseFilters) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      console.log('useCourses: Starting fetch for page:', page, 'size:', size, 'filters:', newFilters || filters);
-      const response = await coursesAPI.getCourses(page, size, newFilters || filters);
+      console.log('useCourses: Starting fetch for page:', page, 'size:', size, 'filters:', newFilters || filtersRef.current);
+      const response = await coursesAPI.getCourses(page, size, newFilters || filtersRef.current);
       
       console.log('useCourses: Fetched courses response:', response);
       
       if (response.success && response.data) {
-        // Safe assignment with fallback to empty array
-        setCourses(response.data ?? []);
-        setError(null); // Clear any previous errors
+        const pageData = response.data;
+        console.log('useCourses: Page data:', pageData);
         
-        // Update pagination if available
-        if (response.data && response.data.length > 0) {
-          setPagination(prev => ({
-            ...prev,
-            page,
-            size,
-            totalElements: response.data.length, // This might need adjustment based on actual response
-            hasNext: response.data.length === size,
-            hasPrevious: page > 0,
-          }));
-        }
+        setCourses(pageData.content || []);
+        setError(null);
+        
+        setPagination({
+          page: pageData.number || 0,
+          size: pageData.size || 10,
+          totalElements: pageData.totalElements || 0,
+          totalPages: pageData.totalPages || 0,
+          hasNext: pageData.last === false,
+          hasPrevious: pageData.first === false,
+        });
       } else {
+        console.error('useCourses: Invalid response format:', response);
         setError(response.message || 'Failed to fetch courses');
-        setCourses([]); // Set empty array on error
+        setCourses([]);
       }
     } catch (err: any) {
       console.error('useCourses: Error fetching courses:', err);
       
-      // Enhanced error handling with specific messages
       let errorMessage = 'Failed to fetch courses';
       
       if (!err.response) {
-        // Network error or timeout
         if (err.code === 'ECONNABORTED') {
           errorMessage = 'Request timeout - server is not responding. Please try again.';
         } else if (err.message.includes('Network Error')) {
@@ -70,24 +81,24 @@ export const useCourses = () => {
         }
       } else if (err.response.status === 401) {
         errorMessage = 'Authentication required. Please log in again.';
+        // Trigger logout for 401 errors
+        logout();
       } else if (err.response.status === 403) {
         errorMessage = 'Access denied. You do not have permission to view courses.';
       } else if (err.response.status >= 500) {
         errorMessage = 'Server error. Please try again later.';
       } else if (err.response.data?.message) {
         errorMessage = err.response.data.message;
-      } else if (err.message) {
-        errorMessage = err.message;
       }
       
       setError(errorMessage);
-      setCourses([]); // Set empty array on error
+      setCourses([]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [logout]); // Include logout in dependencies
 
-  const createCourse = async (courseData: CourseRequest) => {
+  const createCourse = useCallback(async (courseData: CourseRequest) => {
     setIsCreating(true);
     setError(null);
 
@@ -95,25 +106,27 @@ export const useCourses = () => {
       const response = await coursesAPI.createCourse(courseData);
       
       if (response.success && response.data) {
-        // Safe state update with fallback to empty array
-        setCourses(prev => [response.data, ...(prev ?? [])]);
-        showSuccess('Course created successfully', 'The course has been added to the system.');
+        console.log('useCourses: Course created successfully:', response.data);
+        showSuccess('Course created successfully');
+        
+        // Refresh the courses list using current pagination
+        fetchCourses(paginationRef.current.page, paginationRef.current.size);
+        
         return response.data;
       } else {
         throw new Error(response.message || 'Failed to create course');
       }
     } catch (err: any) {
-      console.error('Error creating course:', err);
+      console.error('useCourses: Error creating course:', err);
       const errorMessage = err.response?.data?.message || err.message || 'Failed to create course';
-      setError(errorMessage);
-      showError('Failed to create course', errorMessage);
+      showError(errorMessage);
       throw err;
     } finally {
       setIsCreating(false);
     }
-  };
+  }, [fetchCourses, showSuccess, showError]);
 
-  const updateCourse = async (id: number, courseData: Partial<CourseRequest>) => {
+  const updateCourse = useCallback(async (id: number, courseData: Partial<CourseRequest>) => {
     setIsUpdating(true);
     setError(null);
 
@@ -121,27 +134,28 @@ export const useCourses = () => {
       const response = await coursesAPI.updateCourse(id, courseData);
       
       if (response.success && response.data) {
-        // Safe state update with fallback to empty array
-        setCourses(prev => (prev ?? []).map(course => 
-          course.id === id ? response.data : course
+        console.log('useCourses: Course updated successfully:', response.data);
+        showSuccess('Course updated successfully');
+        
+        setCourses(prev => prev.map(course => 
+          course.id === id ? { ...course, ...response.data } : course
         ));
-        showSuccess('Course updated successfully', 'The course has been updated.');
+        
         return response.data;
       } else {
         throw new Error(response.message || 'Failed to update course');
       }
     } catch (err: any) {
-      console.error('Error updating course:', err);
+      console.error('useCourses: Error updating course:', err);
       const errorMessage = err.response?.data?.message || err.message || 'Failed to update course';
-      setError(errorMessage);
-      showError('Failed to update course', errorMessage);
+      showError(errorMessage);
       throw err;
     } finally {
       setIsUpdating(false);
     }
-  };
+  }, [showSuccess, showError]);
 
-  const deleteCourse = async (id: number) => {
+  const deleteCourse = useCallback(async (id: number) => {
     setIsDeleting(true);
     setError(null);
 
@@ -149,24 +163,45 @@ export const useCourses = () => {
       const response = await coursesAPI.deleteCourse(id);
       
       if (response.success) {
-        // Safe state update with fallback to empty array
-        setCourses(prev => (prev ?? []).filter(course => course.id !== id));
-        showSuccess('Course deleted successfully', 'The course has been removed from the system.');
+        console.log('useCourses: Course deleted successfully');
+        showSuccess('Course deleted successfully');
+        
+        // Remove the course from the local state
+        setCourses(prev => prev.filter(course => course.id !== id));
+        
+        // Handle pagination edge case: if we deleted the last item on the current page
+        // and we're not on the first page, go to the previous page
+        const currentPage = paginationRef.current.page;
+        const currentSize = paginationRef.current.size;
+        const currentTotalElements = paginationRef.current.totalElements;
+        
+        // If we deleted the last item on the current page and there are more pages
+        if (courses.length === 1 && currentPage > 0) {
+          // Go to previous page
+          fetchCourses(currentPage - 1, currentSize);
+        } else {
+          // Update total elements count
+          setPagination(prev => ({
+            ...prev,
+            totalElements: Math.max(0, currentTotalElements - 1),
+            // Recalculate total pages
+            totalPages: Math.ceil(Math.max(0, currentTotalElements - 1) / currentSize),
+          }));
+        }
       } else {
         throw new Error(response.message || 'Failed to delete course');
       }
     } catch (err: any) {
-      console.error('Error deleting course:', err);
+      console.error('useCourses: Error deleting course:', err);
       const errorMessage = err.response?.data?.message || err.message || 'Failed to delete course';
-      setError(errorMessage);
-      showError('Failed to delete course', errorMessage);
+      showError(errorMessage);
       throw err;
     } finally {
       setIsDeleting(false);
     }
-  };
+  }, [courses.length, fetchCourses, showSuccess, showError]);
 
-  const getCourseById = async (id: number) => {
+  const getCourseById = useCallback(async (id: number) => {
     try {
       const response = await coursesAPI.getCourseById(id);
       
@@ -179,9 +214,9 @@ export const useCourses = () => {
       console.error('Error fetching course:', err);
       throw err;
     }
-  };
+  }, []);
 
-  const getAvailableCourses = async () => {
+  const getAvailableCourses = useCallback(async () => {
     try {
       const response = await coursesAPI.getAvailableCourses();
       
@@ -194,9 +229,9 @@ export const useCourses = () => {
       console.error('Error fetching available courses:', err);
       throw err;
     }
-  };
+  }, []);
 
-  const getCoursesByDepartment = async (department: string) => {
+  const getCoursesByDepartment = useCallback(async (department: string) => {
     try {
       const response = await coursesAPI.getCoursesByDepartment(department);
       
@@ -209,40 +244,41 @@ export const useCourses = () => {
       console.error('Error fetching courses by department:', err);
       throw err;
     }
-  };
+  }, []);
 
-  const updateFilters = (newFilters: CourseFilters) => {
+  const updateFilters = useCallback((newFilters: CourseFilters) => {
     setFilters(newFilters);
-    fetchCourses(0, pagination.size, newFilters);
-  };
+    fetchCourses(0, paginationRef.current.size, newFilters);
+  }, [fetchCourses]);
 
-  const refresh = () => {
-    fetchCourses(pagination.page, pagination.size, filters);
-  };
+  const refresh = useCallback(() => {
+    fetchCourses(paginationRef.current.page, paginationRef.current.size, filtersRef.current);
+  }, [fetchCourses]);
 
-  const nextPage = () => {
-    if (pagination.hasNext) {
-      fetchCourses(pagination.page + 1, pagination.size, filters);
+  const nextPage = useCallback(() => {
+    if (paginationRef.current.hasNext) {
+      fetchCourses(paginationRef.current.page + 1, paginationRef.current.size, filtersRef.current);
     }
-  };
+  }, [fetchCourses]);
 
-  const previousPage = () => {
-    if (pagination.hasPrevious) {
-      fetchCourses(pagination.page - 1, pagination.size, filters);
+  const previousPage = useCallback(() => {
+    if (paginationRef.current.hasPrevious) {
+      fetchCourses(paginationRef.current.page - 1, paginationRef.current.size, filtersRef.current);
     }
-  };
+  }, [fetchCourses]);
 
-  const goToPage = (page: number) => {
-    fetchCourses(page, pagination.size, filters);
-  };
+  const goToPage = useCallback((page: number) => {
+    fetchCourses(page, paginationRef.current.size, filtersRef.current);
+  }, [fetchCourses]);
 
-  useEffect(() => {
-    if (!isInitialized.current) {
-      console.log('useCourses: Initial data fetch on mount');
+  // Use useLayoutEffect for initial data loading to avoid visual flicker
+  useLayoutEffect(() => {
+    if (!authLoading && isAuthenticated && !isInitialized.current) {
+      console.log('useCourses: Auth ready, starting initial data fetch');
       isInitialized.current = true;
       fetchCourses();
     }
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, [authLoading, isAuthenticated, fetchCourses]);
 
   return {
     courses,

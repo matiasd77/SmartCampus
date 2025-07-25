@@ -60,9 +60,18 @@ export const getAuthStatus = () => {
 export const getUserRole = (): string | null => {
   try {
     const userStr = localStorage.getItem('user');
-    if (!userStr) return null;
+    if (!userStr) {
+      console.log('getUserRole: No user data in localStorage');
+      return null;
+    }
     
     const user = JSON.parse(userStr);
+    console.log('getUserRole: User data from localStorage:', {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      hasRole: !!user.role
+    });
     return user.role || null;
   } catch (error) {
     console.error('Error parsing user data:', error);
